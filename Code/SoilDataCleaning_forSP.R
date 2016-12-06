@@ -1,5 +1,5 @@
 # LOAD DATA ---------------------------------------------------------
-setwd("C://users/Gio/Documents")
+setwd("C:/Users/Gio/Documents")
 dir()
 # get table from database
 library(ggplot2)
@@ -318,7 +318,7 @@ CROT_by_SITE$Total <- rowSums(CROT_by_SITE[-1], na.rm = T)
 #   crot$crot_name[crot$crot == names(CROT_by_SITE)[grep(pattern = "CR", names(CROT_by_SITE))]]
 # 
 # write.table(CROT_by_SITE, 
-#             file ="C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/Crop_Rotations_by_Site.txt",
+#             file ="~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/Crop_Rotations_by_Site.txt",
 #             quote = FALSE,
 #             sep = "\t",
 #             na = "-",
@@ -368,15 +368,21 @@ library(lubridate)
 
 
 
+# # an OLD directory of the files to save
+# save(agro, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/agro.RData")
+# save(crot, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/crot.RData")
+# save(plots, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/plots.RData")
+# save(site_metadata, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/metadata.RData")
+# save(var_names, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/var_names.RData")
+# save(soil, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/soil.RData")
 
-save(agro, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/agro.RData")
-save(crot, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/crot.RData")
-save(plots, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/plots.RData")
-save(site_metadata, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/metadata.RData")
-save(var_names, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/var_names.RData")
-save(soil, file = "C:/users/Gio/Documents/CSCAP/Analysis/Sustainable paper/soil.RData")
 
-
+save(agro, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/agro.RData")
+save(crot, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/crot.RData")
+save(plots, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/plots.RData")
+save(site_metadata, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/metadata.RData")
+save(var_names, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/var_names.RData")
+save(soil, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil.RData")
 
 
 

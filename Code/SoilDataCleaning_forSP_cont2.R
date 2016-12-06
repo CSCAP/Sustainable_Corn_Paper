@@ -3,13 +3,15 @@
 # in particular, it averages BD over whole site (intead of plot) by depths
 # Also, CC plots from SERF (8 plots) were removed from analysis 
 
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/soil.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/plots.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/agro.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/crot.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/metadata.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/var_names.RData")
-load("C:/Users/Gio/Documents/Work/CSCAP/Sustainable Corn Paper/big_soil_data.RData")
+setwd("C:/Users/Gio/Documents")
+
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/plots.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/agro.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/crot.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/metadata.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/var_names.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/big_soil_data.RData")
 
 library(tidyr)
 library(ggplot2)
@@ -333,7 +335,10 @@ merge(CS_plot, site_metadata[which(names(site_metadata) %in% c("UniqueID",
       by.x = "site", by.y = "UniqueID", all.x = TRUE) -> CS_plot
 
 # PLOT TIME ========================================================================================
-setwd("C:/Users/Gio/Documents/GitHub/CSCAP/CAP_Fig/Soil_Paper")
+new_dir <- paste0(getwd(), "/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Soil_Figs/", today())
+dir.create(new_dir)
+setwd(new_dir)
+
 
 CS_plot %>% 
   group_by(crot, site) %>% 
