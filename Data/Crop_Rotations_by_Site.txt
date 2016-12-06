@@ -1,0 +1,31 @@
+uniqueid	CR01	CR02	CR03	CR04	CR05	CR06	CR07	CR08	Total
+rotation name	continuous CORN	continuous SOY	continuous CORN with REY cover	continuous SOY with REY cover	CORN-SOY	CORN-SOY with REY cover	CORN-SOY-WHEAT	CORN-SOY-WHEAT/RED CLOVER	-
+ARL      	3	-	-	-	6	-	9	-	18	12
+BRADFORD.A	20	-	-	-	-	-	-	-	20
+BRADFORD.B1	32	-	32	-	-	-	-	-	64	48
+BRADFORD.B2	-	-	-	-	64	64	-	-	128	108
+BRADFORD.C	-	-	-	-	12	12	-	-	24	6
+DPAC    	-	-	-	-	4	-	-	-	4
+FREEMAN 	6	6	6	6	12	12	-	-	48
+GILMORE 	-	-	-	-	16	8	-	-	24
+HICKS.B 	6	-	-	-	-	-	-	-	6
+HICKS.G 	12	-	-	-	-	-	-	-	12
+HOYTVILLE.LTR	6	-	-	-	12	-	-	-	18	6
+ISUAG   	-	-	-	-	8	8	-	-	16
+KELLOGG 	-	-	-	-	27	45	-	-	72
+LAN     	2	-	-	-	4	-	6	-	12	8
+MAR     	3	-	-	-	6	-	9	-	18	12
+MASON   	-	-	-	-	24	48	-	-	72
+NAEW.WS109	-	-	-	-	-	-	-	3	3
+NAEW.WS111	-	-	-	-	-	-	-	3	3
+NAEW.WS113	-	-	-	-	-	-	-	3	3
+NAEW.WS118	-	-	-	-	-	-	-	3	3
+NWREC   	8	8	-	-	16	-	48	-	80	24
+ORR     	8	8	-	-	16	-	26	-	58	24
+SEPAC   	-	-	-	-	8	8	-	-	16	
+SERF    	8	-	-	-	16	-	-	-	24
+STJOHNS  	-	-	-	-	-	-	6	-	6
+WATERMAN	-	-	-	-	12	-	-	-	12
+WOOSTER.COV	32	-	16	-	32	16	-	-	96
+WOOSTER.LTR	6	-	-	-	12	-	-	-	18	6
+   Total	152	22	54	6	307	221	104	12	878
