@@ -649,101 +649,281 @@ ggsave(filename = "plot_SOC_08a.png", width = 10, height = 6, dpi = 300)
 #
 
 
+# BOX PLOTS ===================================
+setwd(new_dir)
+
+# aggregated SOC by sites --------------------
+DATA_plots %>%
+  select(site, value, Latitude, Longitude, State) %>%
+  mutate(site = factor(site, levels = unique(site[order(Latitude)]))) %>%
+  mutate(State = as.factor(State)) %>%
+  ggplot(aes(x=site, y=value)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() -> PLOT1
+
+# PLOT 01.1
+PLOT1 + 
+  ggtitle("Average SOC by Site") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_01.1.png", width = 10, height = 6, dpi = 300)
+
+# PLOT 01.2
+PLOT1 + 
+  facet_grid(~ State) + 
+  ggtitle("Average SOC") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_01.2.png", width = 10, height = 6, dpi = 300)
+
+# PLOT 01.3
+DATA_plots %>%
+  select(site, value, Latitude, Longitude, State) %>%
+  mutate(site = factor(site, levels = unique(site[order(Latitude)]))) %>%
+  mutate(State = as.factor(State)) %>%
+  ggplot(aes(x=site, y=value, fill = State)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC by Site") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_01.3.png", width = 10, height = 6, dpi = 300)
+
+
+
+# aggregated SOC by sites and first-last year (fly) -------------------
+DATA_plots %>%
+  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
+  spread(fly, value, fill = NA) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
+  mutate(State = as.factor(State)) %>%
+  ggplot(aes(x=site, y=value_diff)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() -> PLOT2
+
+# PLOT 02.1
+PLOT2 + 
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_02.1.png", width = 10, height = 6, dpi = 300)
+
+
+# PLOT 02.2
+PLOT2 + 
+  facet_grid(~ State) + 
+  ggtitle("Average SOC Difference between the First and the Last Data Years") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_02.2.png", width = 10, height = 6, dpi = 300)
+
+
+# PLOT 02.3
+DATA_plots %>%
+  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
+  spread(fly, value, fill = NA) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
+  mutate(State = as.factor(State)) %>%
+  ggplot(aes(x=site, y=value_diff, fill = State)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_02.3.png", width = 10, height = 6, dpi = 300)
+
+
+
+# aggregated CS by State --------------------
+# PLOT 03
+DATA_plots %>%
+  select(value, Latitude, Longitude, State) %>%
+  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
+  ggplot(aes(x=State, y=value)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC by State") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_03.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by State and first-last year (fly) -------------------
+DATA_plots %>%
+  select(site, plotid, value, Latitude, Longitude, State, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  select(State, value_diff, first, last, Latitude, Longitude) %>%
+  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
+  ggplot(aes(x=State, y=value_diff)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = xtitle,
+                     labels = comma) +
+  coord_flip() + 
+  ggtitle("Average SOC Difference between the First and the Last Data Years by State") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "boxplot_SOC_04.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation --------------------
+# PLOT 05
+DATA_plots %>%
+  select(crot, crot_name, value) %>%
+  mutate(crot = as.factor(crot)) %>%
+  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  ggplot(aes(x=crot, y=value, fill=I(color))) + 
+  geom_boxplot() +
+  scale_x_discrete(name = "Crop Rotation ID", 
+                   labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  ggtitle("Average SOC by Crop Rotation") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
+ggsave(filename = "boxplot_SOC_05.png", width = 10, height = 6, dpi = 300)
+
+
+
+# aggregated CS by Rotation and first-last year (fly) -------------------
+# PLOT O6
+DATA_plots %>%
+  select(site, plotid, crot, crot_name, value, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(crot = as.factor(crot)) %>%
+  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  ggplot(aes(x=crot, y=value_diff, fill = I(color))) + 
+  geom_boxplot() +
+  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
+ggsave(filename = "boxplot_SOC_06.png", width = 10, height = 6, dpi = 300)
+
+
+DATA_plots %>%
+  select(site, plotid, crot, crot_name, value, fly, State) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(crot_name = as.factor(crot_name)) %>%
+  mutate(color = ifelse(State == "WI", "WI", "Other States")) %>%
+  mutate(color = as.factor(color)) %>%
+  mutate(State = as.factor(State)) %>%
+  ggplot(aes(crot, value_diff, fill = color)) + 
+  geom_boxplot() +
+  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle) +
+  coord_flip() + 
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
+ggsave(filename = "boxplot_SOC_06a.png", width = 10, height = 6, dpi = 300)
+
+
+
+# aggregated CS by Rotation and others --------------------
+# PLOT 07
+DATA_plots %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(crot = as.factor(crot)) %>%
+  mutate(tillage = as.factor(tillage)) %>%
+  mutate(drainage = as.factor(drainage)) %>%
+  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
+  ggplot(aes(x=crot, y=value, fill=I(color))) + 
+  geom_boxplot() +
+  facet_grid(tillage ~ drainage) + 
+  scale_x_discrete(name = "Crop Rotation ID", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.x = element_text(angle = 90, vjust = 0.5))
+ggsave(filename = "boxplot_SOC_07.png", width = 10, height = 6, dpi = 300)
+
+
+
+DATA_plots %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(crot = as.factor(crot)) %>%
+  mutate(tillage = as.factor(tillage)) %>%
+  mutate(drainage = as.factor(drainage)) %>%
+  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
+  ggplot(aes(x=crot, y=value, fill=color)) + 
+  geom_boxplot() + 
+  facet_grid(tillage ~ drainage) + 
+  scale_x_discrete(name = "Crop Rotation ID", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
+  guides(fill = guide_legend(reverse = TRUE))
+ggsave(filename = "boxplot_SOC_07a.png", width = 10, height = 6, dpi = 300)
 
 
 
 
+# aggregated CS by Rotation and other in first-last year (fly) -------------------
+# PLOT 08
+DATA_plots %>%
+  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(crot_name = as.factor(crot_name)) %>%
+  mutate(tillage = as.factor(tillage)) %>%
+  mutate(drainage = as.factor(drainage)) %>%
+  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
+  mutate(State = as.factor(State)) %>% 
+  ungroup() %>%
+  ggplot(aes(x=crot, y=value_diff, fill=I(color))) + 
+  geom_boxplot() +
+  facet_grid(tillage ~ drainage) +
+  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 16)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.y = element_text(size = 8))
+ggsave(filename = "boxplot_SOC_08.png", width = 10, height = 6, dpi = 300)
 
 
 
+DATA_plots %>%
+  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(crot_name = as.factor(crot_name)) %>%
+  mutate(tillage = as.factor(tillage)) %>%
+  mutate(drainage = as.factor(drainage)) %>%
+  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
+  mutate(color = as.factor(color)) %>%
+  mutate(State = as.factor(State)) %>% 
+  ungroup() %>%
+  ggplot(aes(x=crot, y=value_diff, fill=color)) + 
+  geom_boxplot() +
+  facet_grid(tillage ~ drainage) +
+  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 16)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  coord_flip() +
+  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16),
+        axis.text.y = element_text(size = 8))
+ggsave(filename = "boxplot_SOC_08a.png", width = 10, height = 6, dpi = 300)
 
-
-
-
-
-
-
-
-
-
-
-# NEW ADDITION ===========
-#+++++++++++++++++++++++++++++++++++++++++++++  NEW   +++++++++++++++++++++++++++++++++++++++++++++++++
-
-
-# PLOT SOIL13 and SOIL1 for WI sites ARL, LAN, MAR -----------
-ARL <- soil_all_data %>% filter(site == "ARL")
-LAN <- soil_all_data %>% filter(site == "LAN")
-MAR <- soil_all_data %>% filter(site == "MAR")
-
-#SOC ...............................................
-ARL %>% 
-  ggplot(aes(x=depth, y=SOIL13)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in ARL\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "ARL_SOC.png", width = 12, dpi = 300)
-
-LAN %>% 
-  ggplot(aes(x=depth, y=SOIL13)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in LAN\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "LAN_SOC.png", width = 12, dpi = 300)
-
-MAR %>% 
-  ggplot(aes(x=depth, y=SOIL13)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in MAR\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "MAR_SOC.png", width = 12, dpi = 300)
-
-#BD ...............................................
-ARL %>% 
-  ggplot(aes(x=depth, y=SOIL1)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "Bulk Density (g/cm3)") +
-  ggtitle("Soil Bulk Density in ARL\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "ARL_BD.png", width = 12, dpi = 300)
-
-LAN %>% 
-  ggplot(aes(x=depth, y=SOIL1)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "Bulk Density (g/cm3)") +
-  ggtitle("Soil Bulk Density in LAN\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "LAN_BD.png", width = 12, dpi = 300)
-
-MAR %>% 
-  ggplot(aes(x=depth, y=SOIL1)) + 
-  geom_point(aes(color=plotid), size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "Bulk Density (g/cm3)") +
-  ggtitle("Soil Bulk Density in MAR\n(plot averages)") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
-ggsave(filename = "MAR_BD.png", width = 12, dpi = 300)
-
-
-
-
+#
