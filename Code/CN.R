@@ -1,5 +1,5 @@
-# SOC
-# this code shows the change in SOC between first and last soil data years  
+# C:N ratio
+# this code calculates Carbon to Nitrogen Ratio for all plots  
 
 setwd("C:/Users/Gio/Documents")
 
@@ -42,181 +42,63 @@ soil <- rbind(soil, tempo)
 soil %>% arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 
-# select variable of interest (SOIL1 = BD, SOIL13 = SOC, SOIL14 = TN)
-VAR <- "SOIL13"
-
-# select "soil" data with the (a) variables, and (b) sites and plots of interest
-# average over replicates 
+# select SOC (SOIL13) and TN (SOIL14)
 soil %>% 
-  filter(varname == VAR) %>%
+  filter(varname %in% c("SOIL13", "SOIL14")) %>%
   mutate(id = paste(site, plotid, sep = "_")) %>%
   filter(id %in% unique(plots$id)) %>% 
-  group_by(site, plotid, year, varname, depth) %>%
-  summarise_at(vars(value), mean, na.rm = T) -> soil_all
+  select(site, plotid, depth, year, subsample, varname, value) %>%
+  spread(key = varname, value = value, fill = NA) %>%
+  mutate(value = SOIL13/SOIL14) %>%
+  filter(!is.na(value)) -> soil_all
 
 
-# find sites with no or only 1 year SOC data
-soil_all %>% 
-  group_by(site, plotid, year) %>%
-  summarise_at(vars(value), mean, na.rm = T) %>%      # see if there is at least one measurement that year at any depth
-  ungroup() %>% 
-  group_by(site, plotid) %>%
-  summarise(count_years = sum(!is.na(value))) %>%     # count how many years of measurement are available 
-  filter(count_years < 2) %>%                         # filter plots with 1 or no year measurement of SOC
-  mutate(id = paste(site, plotid, sep = "_")) -> soil_no_data_sites
-
-# gives the list of sites that have plot(s) with not enough soil data (and number of plots with insufficient data)
-soil_no_data_sites %>% group_by(site) %>% summarise(n())
-
-# remove plots with no soil data from "plots"
-plots_data <- plots[!plots$id %in% soil_no_data_sites$id, ]
-## get rid off  CC plots with continous corn rotation (ROT1) in SERF
-plots_data <- 
-  plots_data[-which(plots_data$uniqueid == "SERF" & plots_data$rotation == "ROT1"), ]
-
-# list number of plots by crop rotation groups and sites
-plots_data %>% 
-  group_by(crot, uniqueid) %>% 
-  summarise(total.plots = n()) %>% 
-  spread(key = crot, value = total.plots) -> plots_summary
-
-
-# get renewed soil plots and values by removing plots with no soil data from "soil"
-soil %>%
-  filter(varname == VAR) %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%              #additional filter to remove plots with no or 1 year soil data
-  group_by(site, plotid, year, varname, depth) %>%
-  summarise_at(vars(value), mean, na.rm = T) -> soil_all
 ## get rid off  CC plots with continous corn rotation (ROT1) in SERF
 soil_all %>% filter(!(site == "SERF" & grepl("C", plotid))) -> soil_all
 
-# EXPLOR DATA 
-setdiff(soil_all$site[soil_all$year == "2015"], soil_all$site[soil_all$year == "2011"])
-soil_all$site[soil_all$year == "2012"] %>% unique()
-  # all 28 sites have data collected in 2015
-  # only 25 sites have first year soil data collected in 2011
-  # 2 sites (ORR, WOOSTER.COV) have the first soil data collected in 2012
-  # BRADFORD.A collected its first soil data in 2013
-# END OF EXPLOR DATA
-
-# find YEARS with no soil data for each plot
-soil_all %>%    
-  group_by(site, plotid, year) %>%
-  summarise_at(vars(value), mean, na.rm = T) %>%
-  ungroup() %>%
-  mutate(id = paste(site, plotid, year, sep = "_")) %>%
-  filter(is.na(value)) -> soil_no_data_years
-
-# remove plot-years with no soil data from "soil_all" 
 soil_all %>% 
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) -> soil_data
+  mutate(site = as.factor(site),
+         depth = as.factor(depth)) -> soil_all
 
-# in STJOHNS soil pH and CEC were measured at 0-30, 30-60, and 60-90 cm intervals
-# while BD, SOC, and TN was measured at "regular" depths corresponding to the protocol 
-# remove those artifactrs from the "soil_all_data"
-if (VAR %in% c("SOIL13", "SOIL14")) {
-  soil_data %>% filter(!depth %in% c("0 - 30", "30 - 60", "60 - 90")) -> soil_data
-}
-
-
-
-# FIRST YEAR of SITES/PLOTS --------------------------
-# find the first and the last soil years 
-soil_data %>%
-  group_by(site) %>% 
-  summarise('First Year' = min(year), 
-            'Last Year' = max(year),
-            'Diff Year' = (max(year) - min(year))) -> first_last_year_SITE
-
-soil_data %>% 
-  group_by(site, plotid) %>% 
-  summarise('First_Year' = min(year), 
-            'Last_Year' = max(year),
-            'Diff Year' = (max(year) - min(year))) -> first_last_year_PLOT
-
-# find sites that have plots with different first years for different plots
-first_last_year_PLOT %>% 
-  group_by(site, First_Year) %>% 
-  summarise() %>%
-  group_by(site) %>%
-  summarise(count = n())%>%
-  arrange(desc(count)) %>%
-  filter(count > 1) -> tempo
-# list of plots with the First Year different than the rest of the Site plots
-first_last_year_PLOT %>% 
-  filter(site %in% tempo$site, First_Year != 2011)
+# Plot
+soil_all %>%
+  ggplot(aes(x=site, y=value)) +
+  geom_boxplot() + 
+  coord_flip() +
+  scale_y_continuous(name = "C:N") +
+  ggtitle("Carbon to Nitrogen Ratio\n(actual data)") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "CN.png", width = 12, height = 8, dpi = 300)
 
 
-# find sites that have plots with different last years for different plots
-first_last_year_PLOT %>% 
-  group_by(site, Last_Year) %>% 
-  summarise() %>%
-  group_by(site) %>%
-  summarise(count = n())%>%
-  arrange(desc(count)) %>%
-  filter(count > 1)
 
 
-# creat ids for "first_last_year_PLOT" and stor as "fly_first" and "fly_last"
-first_last_year_PLOT %>% 
-  mutate(id  = paste(site, First_Year, sep = "_")) %>%
-  mutate(id4 = paste(site, plotid, sep = "_")) %>% 
-  mutate(id5 = paste(site, plotid, First_Year, sep = "_")) -> fly_first
-first_last_year_PLOT %>% 
-  mutate(id  = paste(site, Last_Year, sep = "_")) %>%
-  mutate(id4 = paste(site, plotid, sep = "_")) %>%
-  mutate(id5 = paste(site, plotid, Last_Year, sep = "_")) -> fly_last
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 # IDs ---------------------------------------------------------------
-# set "id"to be used for sorting of "soil_data"
-soil_data %>%
+# set "id"to be used for sorting of "soil_all"
+soil_all %>%
   mutate(id = paste(site, year, sep = "_")) %>%
   mutate(id2 = paste(site, plotid, depth, sep = "_")) %>%
   mutate(id3 = paste(site, plotid, year, depth, sep = "_")) %>%
   mutate(id4 = paste(site, plotid, sep = "_")) %>%
-  mutate(id5 = paste(site, plotid, year, sep = "_")) -> soil_data
-
-
-# find rows with no soil data in the "First Year"
-soil_data %>% 
-  filter(id5 %in% fly_first$id5) %>%
-  filter(is.na(value)) -> first_missing
-
-# find values corresponding to the "first_missing" data in non-first-year
-soil_data %>% 
-  filter(!id5 %in% fly_first$id5) %>%   #choose all no-first-year data
-  filter(id2 %in% first_missing$id2) %>% 
-  ungroup() %>%
-  filter(year == 2013) %>% 
-  select(id, id2, id3, value) -> first_missing_subs
-
-# replace missing values in 2011 with substitutes from 2013
-soil_data$value[soil_data$id3 %in% first_missing$id3] <- 
-  first_missing_subs$value[first_missing_subs$id2 %in% first_missing$id2]
-
-
-# find rows with no soil data in the "Last Year"
-soil_data %>%
-  filter(id5 %in% fly_last$id5) %>%
-  filter(is.na(value)) -> last_missing
-
-# find values corresponding to the "last_missing" data in non-last-year
-soil_data %>%
-  filter(!id5 %in% fly_last$id5) %>%   #choose all no-first-year data
-  filter(id2 %in% last_missing$id2) %>% 
-  ungroup() %>%
-  filter(year == 2011) %>%    # 2011 was choosen since there is no data in 2013
-  select(id, id2, id3, value) -> last_missing_subs
-
-# remove "last_missing" plots because thay have only one measurement of SOC at 40-60 depth
-# plots: 3 CS plots (101, 104 and 505) and 3 CSwRC plots (103, 208, and 507)
-soil_data <- soil_data[!soil_data$id4 %in% last_missing$id4, ]
+  mutate(id5 = paste(site, plotid, year, sep = "_")) -> soil_all
 
 
 
@@ -298,7 +180,6 @@ PLOTS_summary <- rbind(PLOTS_summary, c("TOTAL", colSums(PLOTS_summary[2:10], na
 # to print 
 PLOTS_summary[is.na(PLOTS_summary)] <- "-"
 PLOTS_summary
-write.table(PLOTS_summary, file = "Plot_Summary.txt", sep = "\t", quote = FALSE, row.names = FALSE)
 
 #
 xtitle <- "SOC (%)" 
@@ -933,82 +814,7 @@ ggsave(filename = "boxplot_SOC_08a.png", width = 10, height = 6, dpi = 300)
 
 
 
-# aggregated CS by COVER CROP ROTATIONS ============================================
-# PLOT 05
-DATA_plots %>%
-  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
-  ggplot(aes(x=cover_crop, y=value)) + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  facet_grid( ~ fly) +
-  theme_bw() + 
-  ggtitle("Average SOC by Crop Rotations with and without Cover Crops\n(comparison of the first and the last data years)") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_CC_05.png", width = 10, height = 6, dpi = 300)
 
-
-# aggregated CS by Rotation and first-last year (fly) -------------------
-# PLOT O6
-DATA_plots %>%
-  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
-  select(site, plotid, cover_crop, crot_name, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  ggplot(aes(x=cover_crop, y=value_diff)) + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  scale_x_discrete(name = "Crop Rotaion") +
-  scale_y_continuous(name = xtitle) +
-  #coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years\nby Crop Rotation with and without Cover Crops") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_CC_06.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by Rotation and others --------------------
-# PLOT 07
-DATA_plots %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
-  select(cover_crop, crot_name, tillage, drainage, value, State) %>%
-  ggplot(aes(x=cover_crop, y=value)) + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  facet_grid(tillage ~ drainage) + 
-  scale_x_discrete(name = "Crop Rotation") +
-  scale_y_continuous(name = xtitle) +
-  theme_bw() + 
-  ggtitle("Average SOC by Crop Rotation with and without Cover Crops\ngrouped by Drainage and Tillage") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_07.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by Rotation and other in first-last year (fly) -------------------
-# PLOT 08
-DATA_plots %>%
-  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
-  select(site, plotid, cover_crop, crot_name, value, fly, drainage, tillage) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  ungroup() %>%
-  ggplot(aes(x=cover_crop, y=value_diff)) + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  facet_grid(tillage ~ drainage) +
-  scale_x_discrete(name = "Crop Rotaion") +
-  scale_y_continuous(name = xtitle) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years\nby Crop Rotation with and without Cover Crops grouped by Drainage and Tillage") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_CC_08.png", width = 10, height = 6, dpi = 300)
-
-#
-
-
-mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
 
 
 
