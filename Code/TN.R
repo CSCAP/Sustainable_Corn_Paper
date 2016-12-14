@@ -1013,3 +1013,176 @@ ggsave(filename = "MAR_BD.png", width = 12, dpi = 300)
 
 
 
+
+
+
+
+# aggregated CS by COVER CROP ROTATIONS ============================================
+# PLOT 05
+DATA_plots %>%
+  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
+  ggplot(aes(x=cover_crop, y=value)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  facet_grid( ~ fly) +
+  theme_bw() + 
+  ggtitle("Average TN by Crop Rotations with and without Cover Crops\n(comparison of the first and the last data years)") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_CC_05.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and first-last year (fly) -------------------
+# PLOT O6
+DATA_plots %>%
+  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
+  select(site, plotid, cover_crop, crot_name, value, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  ggplot(aes(x=cover_crop, y=value_diff)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  scale_x_discrete(name = "Crop Rotaion") +
+  scale_y_continuous(name = xtitle) +
+  #coord_flip() +
+  theme_light() + 
+  ggtitle("Average TN Difference between the First and the Last Data Years\nby Crop Rotation with and without Cover Crops") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_CC_06.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and others --------------------
+# PLOT 07
+DATA_plots %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
+  select(cover_crop, crot_name, tillage, drainage, value, State, fly) %>%
+  ggplot(aes(x=cover_crop, y=value, fill = fly)) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "dodge") +
+  facet_grid(tillage ~ drainage) + 
+  scale_x_discrete(name = "Crop Rotation") +
+  scale_y_continuous(name = xtitle) +
+  theme_bw() + 
+  ggtitle("Average TN by Crop Rotation with and without Cover Crops\ngrouped by Drainage and Tillage") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_CC_07.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and other in first-last year (fly) -------------------
+# PLOT 08
+DATA_plots %>%
+  mutate(cover_crop = ifelse(crot %in% c("CR01", "CR02", "CR05", "CR07", "CR08"), "no cover crop", "with cover crop")) %>%
+  select(site, plotid, cover_crop, crot_name, value, fly, drainage, tillage) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  ungroup() %>%
+  ggplot(aes(x=cover_crop, y=value_diff)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  facet_grid(tillage ~ drainage) +
+  scale_x_discrete(name = "Crop Rotaion") +
+  scale_y_continuous(name = xtitle) +
+  #  coord_flip() +
+  theme_light() + 
+  ggtitle("Average TN Difference between the First and the Last Data Years\nby Crop Rotation with and without Cover Crops grouped by Drainage and Tillage") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_CC_08.png", width = 10, height = 6, dpi = 300)
+
+#
+
+
+
+
+
+# aggregated CS by DIVERSE CROP ROTATIONS ============================================
+# 3 or more crops in the system are considered as diverse
+# 1 crop (such as cont C or cont S) is excluded
+# PLOT 05
+DATA_plots %>%
+  mutate(diverse_crop = ifelse(crot %in% c("CR01", "CR02"), "mono-cropping", 
+                               ifelse(crot %in% c("CR03", "CR04", "CR05"), 
+                                      "bi-cropping", "multi-cropping"))) %>%
+  mutate(diverse_crop = factor(diverse_crop, 
+                               levels = c("mono-cropping","bi-cropping", "multi-cropping"))) %>%
+  ggplot(aes(x=diverse_crop, y=value)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  scale_x_discrete(name = "Cropping System") +
+  scale_y_continuous(name = xtitle, labels = comma) +
+  facet_grid( ~ fly) +
+  theme_bw() + 
+  ggtitle("Average TN by Diversity of Cropping System\n(comparison of the first and the last data years)") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_DC_05.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and first-last year (fly) -------------------
+# PLOT O6
+DATA_plots %>%
+  mutate(diverse_crop = ifelse(crot %in% c("CR01", "CR02"), "mono-cropping", 
+                               ifelse(crot %in% c("CR03", "CR04", "CR05"), 
+                                      "bi-cropping", "multi-cropping"))) %>%
+  mutate(diverse_crop = factor(diverse_crop, 
+                               levels = c("mono-cropping","bi-cropping", "multi-cropping"))) %>%
+  select(site, plotid, diverse_crop, crot_name, value, fly) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  ggplot(aes(x=diverse_crop, y=value_diff)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  scale_x_discrete(name = "Cropping System") +
+  scale_y_continuous(name = xtitle) +
+  #coord_flip() +
+  theme_light() + 
+  ggtitle("Average TN Difference between the First and the Last Data Years\nby Diversity of Cropping System") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_DC_06.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and others --------------------
+# PLOT 07
+DATA_plots %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  mutate(diverse_crop = ifelse(crot %in% c("CR01", "CR02"), "mono-cropping", 
+                               ifelse(crot %in% c("CR03", "CR04", "CR05"), 
+                                      "bi-cropping", "multi-cropping"))) %>%
+  mutate(diverse_crop = factor(diverse_crop, 
+                               levels = c("mono-cropping","bi-cropping", "multi-cropping"))) %>%
+  select(diverse_crop, crot_name, tillage, drainage, value, State, fly) %>%
+  ggplot(aes(x=diverse_crop, y=value, fill = fly)) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "dodge") +
+  facet_grid(tillage ~ drainage) + 
+  scale_x_discrete(name = "Cropping System") +
+  scale_y_continuous(name = xtitle) +
+  theme_bw() + 
+  ggtitle("Average TN by Diversity of Cropping System\ngrouped by Drainage and Tillage") + 
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_DC_07.png", width = 10, height = 6, dpi = 300)
+
+
+# aggregated CS by Rotation and other in first-last year (fly) -------------------
+# PLOT 08
+DATA_plots %>%
+  mutate(diverse_crop = ifelse(crot %in% c("CR01", "CR02"), "mono-cropping", 
+                               ifelse(crot %in% c("CR03", "CR04", "CR05"), 
+                                      "bi-cropping", "multi-cropping"))) %>%
+  mutate(diverse_crop = factor(diverse_crop, 
+                               levels = c("mono-cropping","bi-cropping", "multi-cropping"))) %>%
+  select(site, plotid, diverse_crop, crot_name, value, fly, drainage, tillage) %>%
+  spread(fly, value) %>%
+  mutate(value_diff = last - first) %>% 
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
+  ungroup() %>%
+  ggplot(aes(x=diverse_crop, y=value_diff)) + 
+  geom_bar(stat = "summary", fun.y = "mean") +
+  facet_grid(tillage ~ drainage) +
+  scale_x_discrete(name = "Cropping System") +
+  scale_y_continuous(name = xtitle) +
+  #  coord_flip() +
+  theme_light() + 
+  ggtitle("Average TN Difference between the First and the Last Data Years\nby Diversity of Cropping System grouped by Drainage and Tillage") +
+  theme(plot.title = element_text(hjust = 0.5, size = 16))
+ggsave(filename = "plot_TN_DC_08.png", width = 10, height = 6, dpi = 300)
+
+#
