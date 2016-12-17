@@ -44,13 +44,12 @@ soil %>% arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 # select SOC (SOIL13) and TN (SOIL14)
 soil %>% 
-  filter(varname %in% c("SOIL13", "SOIL14")) %>%
+  filter(varname %in% c("SOIL1", "SOIL13", "SOIL14")) %>%
   mutate(id = paste(site, plotid, sep = "_")) %>%
   filter(id %in% unique(plots$id)) %>% 
   select(site, plotid, depth, year, subsample, varname, value) %>%
   spread(key = varname, value = value, fill = NA) %>%
-  mutate(value = SOIL13/SOIL14) %>%
-  filter(!is.na(value)) -> soil_all
+  mutate(SOILCN = SOIL13/SOIL14) -> soil_all
 
 
 ## get rid off  CC plots with continous corn rotation (ROT1) in SERF
@@ -60,9 +59,12 @@ soil_all %>%
   mutate(site = as.factor(site),
          depth = as.factor(depth)) -> soil_all
 
+
+
 # Plot
 soil_all %>%
-  ggplot(aes(x=site, y=value)) +
+  filter(!is.na(SOIL14)) %>%
+  ggplot(aes(x=site, y=SOILCN)) +
   geom_boxplot() + 
   coord_flip() +
   scale_y_continuous(name = "C:N") +
@@ -73,6 +75,142 @@ ggsave(filename = "CN.png", width = 12, height = 8, dpi = 300)
 
 
 
+# FUNCTIONS to find outliers or out-outliers 
+# Outlier
+is_outlier <- function(x) {
+  return(x < quantile(x, 0.25, na.rm = T) - 1.5 * IQR(x, na.rm = T) | 
+           x > quantile(x, 0.75, na.rm = T) + 1.5 * IQR(x, na.rm = T))
+}
+# Out-of-Outlier
+is_toomuch <- function(x) {
+  return(x < quantile(x, 0.25, na.rm = T) - 4 * IQR(x, na.rm = T) | 
+           x > quantile(x, 0.75, na.rm = T) + 4 * IQR(x, na.rm = T))
+}
+
+
+# add colums for out-of-outliers
+soil_all %>% 
+  group_by(site, depth) %>%
+  mutate(outlier13 = ifelse(is_toomuch(SOIL13), plotid, as.character(NA)),
+         outlier14 = ifelse(is_toomuch(SOIL14), plotid, as.character(NA)),
+         outlierCN = ifelse(is_toomuch(SOILCN), plotid, as.character(NA))) %>%
+  ungroup()-> soil_data
+
+
+# PLOT TIME 
+new_dir <- paste0(getwd(), "/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Soil_Figs/", Sys.Date())
+dir.create(new_dir)
+setwd(new_dir)
+
+
+
+# PLOT soil bulk density (BD)
+var <- c("SOIL1", "Soil Bulkd Density (gm/cm3)")
+site_list <- as.character(unique(soil_data$site))
+
+for (i in 1:28) {
+  site_name <- site_list[i]
+  soil_data %>% 
+    filter(!is.na(SOIL1)) %>% 
+    filter(site == site_name) %>%
+    
+    ggplot(aes(x=depth, y=get(var[1]))) +
+    geom_boxplot(aes(color = I("lightblue2")), outlier.colour = "orange", outlier.size = 3) +
+    geom_point(size = 2) + 
+    facet_grid(~ as.factor(year)) + 
+    scale_x_discrete(name = "Depth (cm)") +
+    scale_y_continuous(name = var[2]) +
+    ggtitle(paste("Soil Bulkd Density in", site_name)) +
+    theme(plot.title = element_text(hjust = 0.5), 
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+    
+  ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
+}
+
+
+
+
+# PLOT soil organic carbon (SOC)
+var <- c("SOIL13", "SOC (%)")
+site_list <- as.character(unique(soil_data$site))
+
+for (i in 1:28) {
+  site_name <- site_list[i]
+  soil_data %>% 
+    filter(!is.na(SOIL13)) %>% 
+    filter(site == site_name) %>%
+    
+    ggplot(aes(x=depth, y=get(var[1]))) + 
+    geom_boxplot(aes(color = I("lightblue2")), outlier.colour = "orange", outlier.size = 3) +
+    geom_point(size = 2) + 
+    facet_grid(~ as.factor(year)) + 
+    scale_x_discrete(name = "Depth (cm)") +
+    scale_y_continuous(name = var[2]) +
+    ggtitle(paste("Soil Organic Carbon in", site_name)) +
+    theme(plot.title = element_text(hjust = 0.5), 
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_point(data = . %>% filter(!is.na(outlier13)), 
+               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+  ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
+}
+
+
+
+
+
+# PLOT soil total nitrogen (TN)
+var <- c("SOIL14", "TN (%)")
+site_list <- as.character(unique(soil_data$site))
+
+for (i in 1:28) {
+  site_name <- site_list[i]
+  soil_data %>% 
+    filter(!is.na(SOIL14)) %>% 
+    filter(site == site_name) %>%
+    
+    ggplot(aes(x=depth, y=get(var[1]))) + 
+    geom_boxplot(aes(color = I("lightblue2")), outlier.colour = "orange", outlier.size = 3) +
+    geom_point(size = 2) + 
+    facet_grid(~ as.factor(year)) + 
+    scale_x_discrete(name = "Depth (cm)") +
+    scale_y_continuous(name = var[2]) +
+    ggtitle(paste("Soil Total Nitrogen in", site_name)) +
+    theme(plot.title = element_text(hjust = 0.5), 
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_point(data = . %>% filter(!is.na(outlier14)), 
+               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+  ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
+}
+
+
+
+
+# PLOT C:N ratio
+var <- c("SOILCN", "CN")
+site_list <- as.character(unique(soil_data$site))
+
+for (i in 1:28) {
+  site_name <- site_list[i]
+  soil_data %>% 
+    filter(!is.na(SOILCN)) %>% 
+    filter(site == site_name) %>%
+    
+    ggplot(aes(x=depth, y=get(var[1]))) + 
+    geom_boxplot(aes(color = I("lightblue2"))) +
+    geom_point(size = 2) + 
+    facet_grid(~ as.factor(year)) + 
+    scale_x_discrete(name = "Depth (cm)") +
+    scale_y_continuous(name = var[2]) +
+    ggtitle(paste("C:N Ratio in", site_name)) +
+    theme(plot.title = element_text(hjust = 0.5), 
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_point(data = . %>% filter(!is.na(outlierCN)), 
+               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+  ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
+}
 
 
 
@@ -165,10 +303,6 @@ DATA %>%
 
 
 # PLOT TIME ========================================================================================
-new_dir <- paste0(getwd(), "/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Soil_Figs/", Sys.Date())
-dir.create(new_dir)
-setwd(new_dir)
-shell.exec(new_dir)    #opens new directory as window
 
 # number of plots per site and crop rotation 
 DATA %>% 
@@ -181,830 +315,3 @@ PLOTS_summary <- rbind(PLOTS_summary, c("TOTAL", colSums(PLOTS_summary[2:10], na
 PLOTS_summary[is.na(PLOTS_summary)] <- "-"
 PLOTS_summary
 
-#
-xtitle <- "SOC (%)" 
-
-# aggregated SOC by sites --------------------
-DATA_plots %>%
-  select(site, value, Latitude, Longitude, State, Ave_Plot_Size) %>%
-  group_by(site) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(0, 3),
-                     labels = comma) +
-  coord_flip() +
-  theme_light() -> PLOT1
-
-# PLOT 01.1
-PLOT1 + 
-  ggtitle("Average SOC by Site") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_01.1.png", width = 10, height = 6, dpi = 300)
-
-# PLOT 01.2
-PLOT1 + 
-  facet_grid(~ State) + 
-  ggtitle("Average SOC") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_01.2.png", width = 10, height = 6, dpi = 300)
-
-# PLOT 01.3
-DATA_plots %>%
-  select(site, value, Latitude, Longitude, State, Ave_Plot_Size) %>%
-  group_by(site) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value, fill = State)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(0, 3),
-                     labels = comma) + 
-  coord_flip() +
-  theme_light() +
-  ggtitle("Average SOC by Site") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_01.3.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated SOC by sites and first-last year (fly) -------------------
-DATA_plots %>%
-  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
-  spread(fly, value, fill = NA) %>%
-  mutate(value_diff = last - first) %>% 
-  group_by(site) %>%
-  select(site, value_diff, first, last, Latitude, Longitude, State) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value_diff)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(-1.2, 0.5),
-                     labels = comma)+
-  coord_flip() +
-  theme_light() -> PLOT2
-
-# PLOT 02.1
-PLOT2 + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_02.1.png", width = 10, height = 6, dpi = 300)
-
-
-# PLOT 02.2
-PLOT2 + 
-  facet_grid(~ State) + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_02.2.png", width = 10, height = 6, dpi = 300)
-
-  
-# PLOT 02.3
-DATA_plots %>%
-  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
-  spread(fly, value, fill = NA) %>%
-  mutate(value_diff = last - first) %>% 
-  group_by(site) %>%
-  select(site, value_diff, first, last, Latitude, Longitude, State) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value_diff, fill = State)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(-1.2, 0.5),
-                     labels = comma)+
-  coord_flip() +
-  theme_light() +
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_02.3.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by State --------------------
-# PLOT 03
-DATA_plots %>%
-  group_by(State) %>%
-  select(value, Latitude, Longitude, State) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
-  ggplot(aes(x=State, y=value)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "US STATE") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(0, 3),
-                     labels = comma) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC by State") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_03.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by State and first-last year (fly) -------------------
-DATA_plots %>%
-  select(site, plotid, value, Latitude, Longitude, State, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  group_by(State) %>%
-  select(State, value_diff, first, last, Latitude, Longitude) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
-  ggplot(aes(x=State, y=value_diff)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "US STATE") +
-  scale_y_continuous(name = xtitle,
-                     limits = c(-0.6, 0.3),
-                     labels = comma) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by State") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "plot_SOC_04.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by Rotation --------------------
-# PLOT 05
-DATA_plots %>%
-  group_by(crot) %>%
-  select(crot, crot_name, value) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot_name, y=value, fill=I(color))) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle,
-                     limits = c(0, 1.50),
-                     labels = comma) +
-  theme_bw() + 
-  ggtitle("Average SOC by Crop Rotation") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "plot_SOC_05.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by Rotation and first-last year (fly) -------------------
-# PLOT O6
-DATA_plots %>%
-  select(site, plotid, crot, crot_name, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  group_by(crot) %>%
-  select(crot, crot_name, value_diff, first, last) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot_name, y=value_diff, fill = I(color))) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "Crop Rotaion", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle,
-                     limits = c(-0.12, 0.08),
-                     labels = comma) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "plot_SOC_06.png", width = 10, height = 6, dpi = 300)
-
-
-
-DATA_plots %>%
-  select(site, plotid, crot, crot_name, value, fly, State) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
-  mutate(color = as.factor(color)) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(crot_name, value_diff, fill = color)) + 
-  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
-  scale_x_discrete(name = "Crop Rotaion", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-
-
-DATA_plots %>%
-  select(site, plotid, crot, crot_name, value, fly, State) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(color = ifelse(State == "WI", "WI", "Other States")) %>%
-  mutate(color = as.factor(color)) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(crot_name, value_diff, fill = color)) + 
-  geom_bar(stat = "summary", fun.y = "mean", position = "dodge") +
-  scale_x_discrete(name = "Crop Rotaion", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "plot_SOC_06a.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by Rotation and others --------------------
-# PLOT 07
-DATA_plots %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  select(crot, crot_name, tillage, drainage, value, State) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
-  ggplot(aes(x=crot_name, y=value, fill=I(color))) + 
-  #stat_summary(fun.y=mean, geom="bar") + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  facet_grid(tillage ~ drainage) + 
-  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  theme_bw() + 
-  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "plot_SOC_07.png", width = 10, height = 6, dpi = 300)
-
-
-
-DATA_plots %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  select(crot, crot_name, tillage, drainage, value, State) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  #mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
-  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
-  ggplot(aes(x=crot_name, y=value, fill=color)) + 
-  #stat_summary(fun.y=mean, geom="bar") + 
-  geom_bar(stat = "summary", fun.y = "mean", position = "dodge") +
-  facet_grid(tillage ~ drainage) + 
-  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  theme_bw() + 
-  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  guides(fill = guide_legend(reverse = TRUE))
-ggsave(filename = "plot_SOC_07a.png", width = 10, height = 6, dpi = 300)
-
-
-
-
-# aggregated CS by Rotation and other in first-last year (fly) -------------------
-# PLOT 08
-DATA_plots %>%
-  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
-  mutate(State = as.factor(State)) %>% 
-  ungroup() %>%
-  ggplot(aes(x=crot_name, y=value_diff, fill=I(color))) + 
-  geom_bar(stat = "summary", fun.y = "mean") +
-  facet_grid(tillage ~ drainage) +
-  scale_x_discrete(name = "Crop Rotaion", labels = function(x) str_wrap(x, width = 16)) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.y = element_text(size = 8))
-ggsave(filename = "plot_SOC_08.png", width = 10, height = 6, dpi = 300)
-
-
-
-DATA_plots %>%
-  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
-  mutate(color = as.factor(color)) %>%
-  mutate(State = as.factor(State)) %>% 
-  ungroup() %>%
-  ggplot(aes(x=crot_name, y=value_diff, fill=color)) + 
-  geom_bar(stat = "summary", fun.y = "mean", position = "dodge") +
-  facet_grid(tillage ~ drainage) +
-  scale_x_discrete(name = "Crop Rotaion", labels = function(x) str_wrap(x, width = 16)) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() +
-  theme_light() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.y = element_text(size = 8))
-ggsave(filename = "plot_SOC_08a.png", width = 10, height = 6, dpi = 300)
-
-#
-
-
-# BOX PLOTS ===================================
-setwd(new_dir)
-
-# aggregated SOC by sites --------------------
-DATA_plots %>%
-  select(site, value, Latitude, Longitude, State) %>%
-  mutate(site = factor(site, levels = unique(site[order(Latitude)]))) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() -> PLOT1
-
-# PLOT 01.1
-PLOT1 + 
-  ggtitle("Average SOC by Site") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_01.1.png", width = 10, height = 6, dpi = 300)
-
-# PLOT 01.2
-PLOT1 + 
-  facet_grid(~ State) + 
-  ggtitle("Average SOC") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_01.2.png", width = 10, height = 6, dpi = 300)
-
-# PLOT 01.3
-DATA_plots %>%
-  select(site, value, Latitude, Longitude, State) %>%
-  mutate(site = factor(site, levels = unique(site[order(Latitude)]))) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value, fill = State)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC by Site") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_01.3.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated SOC by sites and first-last year (fly) -------------------
-DATA_plots %>%
-  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
-  spread(fly, value, fill = NA) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value_diff)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() -> PLOT2
-
-# PLOT 02.1
-PLOT2 + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_02.1.png", width = 10, height = 6, dpi = 300)
-
-
-# PLOT 02.2
-PLOT2 + 
-  facet_grid(~ State) + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_02.2.png", width = 10, height = 6, dpi = 300)
-
-
-# PLOT 02.3
-DATA_plots %>%
-  select(site, plotid, fly, value, Latitude, Longitude, State) %>%
-  spread(fly, value, fill = NA) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(x=site, y=value_diff, fill = State)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Site") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_02.3.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by State --------------------
-# PLOT 03
-DATA_plots %>%
-  select(value, Latitude, Longitude, State) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
-  ggplot(aes(x=State, y=value)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC by State") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_03.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by State and first-last year (fly) -------------------
-DATA_plots %>%
-  select(site, plotid, value, Latitude, Longitude, State, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  select(State, value_diff, first, last, Latitude, Longitude) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) %>%
-  ggplot(aes(x=State, y=value_diff)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = xtitle,
-                     labels = comma) +
-  coord_flip() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by State") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16))
-ggsave(filename = "boxplot_SOC_04.png", width = 10, height = 6, dpi = 300)
-
-
-# aggregated CS by Rotation --------------------
-# PLOT 05
-DATA_plots %>%
-  select(crot, crot_name, value) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=value, fill=I(color))) + 
-  geom_boxplot() +
-  scale_x_discrete(name = "Crop Rotation ID", 
-                   labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  ggtitle("Average SOC by Crop Rotation") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "boxplot_SOC_05.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by Rotation and first-last year (fly) -------------------
-# PLOT O6
-DATA_plots %>%
-  select(site, plotid, crot, crot_name, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(crot = as.factor(crot)) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=value_diff, fill = I(color))) + 
-  geom_boxplot() +
-  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "boxplot_SOC_06.png", width = 10, height = 6, dpi = 300)
-
-
-DATA_plots %>%
-  select(site, plotid, crot, crot_name, value, fly, State) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(color = ifelse(State == "WI", "WI", "Other States")) %>%
-  mutate(color = as.factor(color)) %>%
-  mutate(State = as.factor(State)) %>%
-  ggplot(aes(crot, value_diff, fill = color)) + 
-  geom_boxplot() +
-  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle) +
-  coord_flip() + 
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "boxplot_SOC_06a.png", width = 10, height = 6, dpi = 300)
-
-
-
-# aggregated CS by Rotation and others --------------------
-# PLOT 07
-DATA_plots %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=value, fill=I(color))) + 
-  geom_boxplot() +
-  facet_grid(tillage ~ drainage) + 
-  scale_x_discrete(name = "Crop Rotation ID", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5))
-ggsave(filename = "boxplot_SOC_07.png", width = 10, height = 6, dpi = 300)
-
-
-
-DATA_plots %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
-  ggplot(aes(x=crot, y=value, fill=color)) + 
-  geom_boxplot() + 
-  facet_grid(tillage ~ drainage) + 
-  scale_x_discrete(name = "Crop Rotation ID", labels = function(x) str_wrap(x, width = 10)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  ggtitle("Average SOC by Crop Rotation grouped by Drainage and Tillage") + 
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.x = element_text(angle = 90, vjust = 0.5)) +
-  guides(fill = guide_legend(reverse = TRUE))
-ggsave(filename = "boxplot_SOC_07a.png", width = 10, height = 6, dpi = 300)
-
-
-
-
-# aggregated CS by Rotation and other in first-last year (fly) -------------------
-# PLOT 08
-DATA_plots %>%
-  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(crot == "CR05" & tillage == "CT" & drainage == "Not Drained", "orange", "grey40")) %>%
-  mutate(State = as.factor(State)) %>% 
-  ungroup() %>%
-  ggplot(aes(x=crot, y=value_diff, fill=I(color))) + 
-  geom_boxplot() +
-  facet_grid(tillage ~ drainage) +
-  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 16)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.y = element_text(size = 8))
-ggsave(filename = "boxplot_SOC_08.png", width = 10, height = 6, dpi = 300)
-
-
-
-DATA_plots %>%
-  select(site, plotid, State, crot, crot_name, tillage, drainage, value, fly) %>%
-  spread(fly, value) %>%
-  mutate(value_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  mutate(drainage = ifelse(drainage %in% c("DWM2", "DWM3", "DWM4", "DWM5"), "Drained", "Not Drained")) %>%
-  mutate(crot_name = as.factor(crot_name)) %>%
-  mutate(tillage = as.factor(tillage)) %>%
-  mutate(drainage = as.factor(drainage)) %>%
-  mutate(color = ifelse(State == "WI", " WI", "Other States")) %>%
-  mutate(color = as.factor(color)) %>%
-  mutate(State = as.factor(State)) %>% 
-  ungroup() %>%
-  ggplot(aes(x=crot, y=value_diff, fill=color)) + 
-  geom_boxplot() +
-  facet_grid(tillage ~ drainage) +
-  scale_x_discrete(name = "Crop Rotaion ID", labels = function(x) str_wrap(x, width = 16)) +
-  scale_y_continuous(name = xtitle, labels = comma) +
-  coord_flip() +
-  ggtitle("Average SOC Difference between the First and the Last Data Years by Crop Rotation\n grouped by Drainage and Tillage") +
-  theme(plot.title = element_text(hjust = 0.5, size = 16),
-        axis.text.y = element_text(size = 8))
-ggsave(filename = "boxplot_SOC_08a.png", width = 10, height = 6, dpi = 300)
-
-#
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# NEW ADDITION ===========
-#+++++++++++++++++++++++++++++++++++++++++++++  NEW   +++++++++++++++++++++++++++++++++++++++++++++++++
-
-#functions to find outliers or out-outliers 
-
-is_outlier <- function(x) {
-  return(x < quantile(x, 0.25) - 1.5 * IQR(x) | x > quantile(x, 0.75) + 1.5 * IQR(x))
-}
-
-
-is_toomuch <- function(x) {
-  return(x < quantile(x, 0.25) - 4 * IQR(x) | x > quantile(x, 0.75) + 4 * IQR(x))
-}
-
-
-
-
-
-# Plot SOC for sites FREEMAN, WATERMAN, STJOHNS
-# adding outlier function ..............................................
-
-
-# FREEMAN 
-soil %>% 
-  filter(site == "FREEMAN", varname == "SOIL13") %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%  
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) %>% 
-  filter(!is.na(value)) %>%
-  group_by(depth) %>%
-  mutate(outlier = ifelse(is_toomuch(value), plotid, as.character(NA))) %>%
-  ungroup() %>% 
-  #filter(!is.na(outlier))
-  #head()
-  
-  ggplot(aes(x=depth, y=value)) + 
-  geom_point(size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in FREEMAN") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
-  geom_point(data = . %>% filter(!is.na(outlier)), aes(x=depth, y=value), color = "orange", size = 3)
-ggsave(filename = "FREEMAN.png", width = 12, height = 8, dpi = 300)
-
-
-# WATERMAN 
-soil %>% 
-  filter(site == "WATERMAN", varname == "SOIL13") %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%  
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) %>% 
-  filter(!is.na(value)) %>%
-  group_by(depth) %>%
-  mutate(outlier = ifelse(is_toomuch(value), plotid, as.character(NA))) %>%
-  ungroup() %>% 
-  #filter(!is.na(outlier))
-  #head()
-  
-  ggplot(aes(x=depth, y=value)) + 
-  geom_point(size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in WATERMAN") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
-  geom_point(data = . %>% filter(!is.na(outlier)), aes(x=depth, y=value), color = "orange", size = 3)
-ggsave(filename = "WATERMAN.png", width = 12, height = 8, dpi = 300)
-
-
-# STJOHNS 
-soil %>% 
-  filter(site == "STJOHNS", varname == "SOIL13") %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%  
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) %>% 
-  filter(!is.na(value)) %>%
-  group_by(depth) %>%
-  mutate(outlier = ifelse(is_toomuch(value), plotid, as.character(NA))) %>%
-  ungroup() %>% 
-  #filter(!is.na(outlier))
-  #head()
-  
-  ggplot(aes(x=depth, y=value)) + 
-  geom_point(size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "SOC (%)") +
-  ggtitle("Soil Organic Carbon in STJOHNS") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
-  geom_point(data = . %>% filter(!is.na(outlier)), aes(x=depth, y=value), color = "orange", size = 3)
-ggsave(filename = "STJOHNS.png", width = 12, height = 8, dpi = 300)
-
-
-
-
-# Plot TN for sites FREEMAN, WATERMAN, STJOHNS
-# adding outlier function ..............................................
-
-
-# FREEMAN 
-soil %>% 
-  filter(site == "FREEMAN", varname == "SOIL14") %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%  
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) %>% 
-  filter(!is.na(value)) %>%
-  group_by(depth) %>%
-  mutate(outlier = ifelse(is_toomuch(value), plotid, as.character(NA))) %>%
-  ungroup() %>% 
-  #filter(!is.na(outlier))
-  #head()
-  
-  ggplot(aes(x=depth, y=value)) + 
-  geom_point(size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "TN (%)") +
-  ggtitle("Soil Organic Carbon in FREEMAN") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
-  geom_point(data = . %>% filter(!is.na(outlier)), aes(x=depth, y=value), color = "orange", size = 3)
-ggsave(filename = "FREEMAN_TN.png", width = 12, height = 8, dpi = 300)
-
-
-# WATERMAN 
-soil %>% 
-  filter(site == "WATERMAN", varname == "SOIL14") %>%
-  mutate(id = paste(site, plotid, sep = "_")) %>%
-  filter(id %in% unique(plots$id)) %>% 
-  filter(!id %in% soil_no_data_sites$id) %>%  
-  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
-  filter(!id %in% soil_no_data_years$id) %>% 
-  filter(!is.na(value)) %>%
-  group_by(depth) %>%
-  mutate(outlier = ifelse(is_toomuch(value), plotid, as.character(NA))) %>%
-  ungroup() %>% 
-  #filter(!is.na(outlier))
-  #head()
-  
-  ggplot(aes(x=depth, y=value)) + 
-  geom_point(size = 2) + 
-  facet_grid(~ as.factor(year)) + 
-  scale_x_discrete(name = "Depth (cm)") +
-  scale_y_continuous(name = "TN (%)") +
-  ggtitle("Soil Organic Carbon in WATERMAN") +
-  theme(plot.title = element_text(hjust = 0.5), 
-        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-  geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
-  geom_point(data = . %>% filter(!is.na(outlier)), aes(x=depth, y=value), color = "orange", size = 3)
-ggsave(filename = "WATERMAN_TN.png", width = 12, height = 8, dpi = 300)
-
-
-  
-  
-  
-  
-  
