@@ -11,6 +11,7 @@ load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/big_soil_data.RData")
 
 library(tidyr)
 library(ggplot2)
+library(ggrepel)
 library(scales)
 library(stringr)
 library(dplyr)
@@ -42,7 +43,7 @@ soil <- rbind(soil, tempo)
 soil %>% arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 
-# select SOC (SOIL13) and TN (SOIL14)
+# select BD (SOIL1), SOC (SOIL13) and TN (SOIL14)
 soil %>% 
   filter(varname %in% c("SOIL1", "SOIL13", "SOIL14")) %>%
   mutate(id = paste(site, plotid, sep = "_")) %>%
@@ -77,21 +78,23 @@ ggsave(filename = "CN.png", width = 12, height = 8, dpi = 300)
 
 # FUNCTIONS to find outliers or out-outliers 
 # Outlier
+  # Outsite Value = Inner Fence (1 step)
 is_outlier <- function(x) {
   return(x < quantile(x, 0.25, na.rm = T) - 1.5 * IQR(x, na.rm = T) | 
            x > quantile(x, 0.75, na.rm = T) + 1.5 * IQR(x, na.rm = T))
 }
-# Out-of-Outlier
+  # Far Out Value = Outer Fence (2 steps)
 is_toomuch <- function(x) {
-  return(x < quantile(x, 0.25, na.rm = T) - 4 * IQR(x, na.rm = T) | 
-           x > quantile(x, 0.75, na.rm = T) + 4 * IQR(x, na.rm = T))
+  return(x < quantile(x, 0.25, na.rm = T) - 3 * IQR(x, na.rm = T) | 
+           x > quantile(x, 0.75, na.rm = T) + 3 * IQR(x, na.rm = T))
 }
 
 
 # add colums for out-of-outliers
 soil_all %>% 
   group_by(site, depth) %>%
-  mutate(outlier13 = ifelse(is_toomuch(SOIL13), plotid, as.character(NA)),
+  mutate(outlier1 = ifelse(is_toomuch(SOIL1), plotid, as.character(NA)),
+         outlier13 = ifelse(is_toomuch(SOIL13), plotid, as.character(NA)),
          outlier14 = ifelse(is_toomuch(SOIL14), plotid, as.character(NA)),
          outlierCN = ifelse(is_toomuch(SOILCN), plotid, as.character(NA))) %>%
   ungroup()-> soil_data
@@ -105,7 +108,7 @@ setwd(new_dir)
 
 
 # PLOT soil bulk density (BD)
-var <- c("SOIL1", "Soil Bulkd Density (gm/cm3)")
+var <- c("SOIL1", "Soil Bulk Density (gm/cm3)")
 site_list <- as.character(unique(soil_data$site))
 
 for (i in 1:28) {
@@ -120,9 +123,12 @@ for (i in 1:28) {
     facet_grid(~ as.factor(year)) + 
     scale_x_discrete(name = "Depth (cm)") +
     scale_y_continuous(name = var[2]) +
-    ggtitle(paste("Soil Bulkd Density in", site_name)) +
+    ggtitle(paste("Soil Bulk Density in", site_name)) +
     theme(plot.title = element_text(hjust = 0.5), 
-          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
+    geom_text(aes(label = outlier1), na.rm = TRUE, vjust = 0.5, hjust = 1.5) +
+    geom_point(data = . %>% filter(!is.na(outlier1)), 
+               aes(x=depth, y=get(var[1])), color = "orange", size = 2)
     
   ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
 }
@@ -149,9 +155,9 @@ for (i in 1:28) {
     ggtitle(paste("Soil Organic Carbon in", site_name)) +
     theme(plot.title = element_text(hjust = 0.5), 
           axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_text(aes(label = outlier13), na.rm = TRUE, vjust = 0.5, hjust = 1.5) +
     geom_point(data = . %>% filter(!is.na(outlier13)), 
-               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+               aes(x=depth, y=get(var[1])), color = "orange", size = 2)
   ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
 }
 
@@ -178,9 +184,9 @@ for (i in 1:28) {
     ggtitle(paste("Soil Total Nitrogen in", site_name)) +
     theme(plot.title = element_text(hjust = 0.5), 
           axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_text(aes(label = outlier14), na.rm = TRUE, vjust = 0.5, hjust = 1.5) +
     geom_point(data = . %>% filter(!is.na(outlier14)), 
-               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+               aes(x=depth, y=get(var[1])), color = "orange", size = 2)
   ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
 }
 
@@ -206,9 +212,10 @@ for (i in 1:28) {
     ggtitle(paste("C:N Ratio in", site_name)) +
     theme(plot.title = element_text(hjust = 0.5), 
           axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5)) +
-    #geom_text(aes(label = outlier), na.rm = TRUE, vjust = 1.5, hjust = 0.5) +
+    geom_text(aes(label = outlierCN), na.rm = TRUE, vjust = 0.5, hjust = 1.5) +
+    #geom_text_repel(aes(label = outlierCN), na.rm = TRUE) +
     geom_point(data = . %>% filter(!is.na(outlierCN)), 
-               aes(x=depth, y=get(var[1])), color = "orange", size = 3)
+               aes(x=depth, y=get(var[1])), color = "orange", size = 2)
   ggsave(filename = paste0(site_name, "_", var[1], ".png"), width = 12, height = 8, dpi = 300)
 }
 
@@ -217,10 +224,28 @@ for (i in 1:28) {
 
 
 
-
-
-
-
+# merge soil_data and plots management data
+soil_data %>%
+  mutate(id = paste(site, plotid, sep = "_")) %>%
+  left_join(plots %>% select(id, rep, tillage, rotation, drainage, nitrogen, crot_name), 
+            by = c("id" = "id")) -> DATA
+#
+# GILMORE - C:N ratio
+DATA %>% 
+  filter(site == "GILMORE", depth == "40 - 60") %>%
+  filter(!is.na(SOILCN)) %>% 
+  ggplot(aes(x=rep, y=SOILCN, color = crot_name)) +
+  #geom_boxplot() +
+  geom_point(size = 3, alpha = 0.75) +
+  facet_grid(rotation ~ as.factor(tillage)) +
+  scale_x_discrete(name = "Depth (cm)") +
+  scale_y_continuous(name = "CN") +
+  ggtitle(paste("C:N Ratio in", site_name)) +
+  theme(plot.title = element_text(hjust = 0.5), 
+        axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.5))
+ggsave(filename = "C:/Users/Gio/Documents/GILMORE.png", width = 12, height = 8, dpi = 300)
+#
+  
 
 
 
