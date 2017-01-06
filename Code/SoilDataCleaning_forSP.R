@@ -107,8 +107,7 @@ rot
 # merge (inner join) agro and rot on variable code
 agro <- merge(agro, rot[ , c(1:2)], by.x = "rotation", by.y = "code", all.x = TRUE)
 
-# get rid of rot
-rm(rot)
+
 
 # rename added column name 
 names(agro)[grep("label", names(agro))] <- "rot_short_descr"
