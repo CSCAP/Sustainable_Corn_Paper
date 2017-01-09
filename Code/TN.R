@@ -7,7 +7,7 @@ load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/plots.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/crot.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/metadata.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/var_names.RData")
-load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/big_soil_data.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil.RData")
 
 library(tidyr)
 library(ggplot2)
@@ -17,28 +17,16 @@ library(dplyr)
 
 # BELOW DETACTION LIMIT data ---------------------------------------- <<< NEED TO ADD TO THE MAIN CODE
 # get row numbers of BDL values
-BDL_rows <- grep("<", SOIL_data$value)
+BDL_rows <- grep("<", SOIL$value)
 # get rid off "< " sign in front of the BDL values and convert all values to numeric
-SOIL_data$value <- as.double(sub("< ", "", SOIL_data$value))     #substitude "<" with ""
+SOIL$value <- as.double(sub("< ", "", SOIL$value))     #substitude "<" with ""
 # substitude BDL data with half of its values
-SOIL_data$value[BDL_rows] <- SOIL_data$value[BDL_rows] / 2
+SOIL$value[BDL_rows] <- SOIL$value[BDL_rows] / 2
 # save as the df as soil data
-soil <- SOIL_data
-rm(BDL_rows, SOIL_data)
+soil <- SOIL
+rm(BDL_rows, SOIL)
 
-# Restore ARL data that was accidentally deleted from Google Sheets
-# these values were also added back to the Google Sheet
-# WHEN CSCAP DB IS UPDATED THIS CHUNK OF CODE WILL BE ABSOLETE
-tempo <- data.frame(site = rep("ARL", 2), 
-                    plotid = rep(113, 2), 
-                    depth = rep("20 - 60", 2),
-                    varname = c("SOIL13", "SOIL14"),
-                    year = rep(2015, 2),
-                    value = c(0.959591, 0.105528), 
-                    subsample = rep(1, 2),
-                    updated = rep("2016-12-08", 2),
-                    sampledate = rep(NA, 2)) 
-soil <- rbind(soil, tempo)
+
 soil %>% arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 

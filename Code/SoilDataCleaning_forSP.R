@@ -144,11 +144,11 @@ agro$color[grepl("ONFARM", agro$site)] <- "indianred"
 # select 7 for soil data and name the object as soil
 select_table()
 7
-soil
+SOIL
 
-soil$updated <- NULL
-soil$value <- as.numeric(soil$value)
-soil$sampledate <- as.Date(soil$sampledate)
+# SOIL$updated <- NULL
+# SOIL$sampledate <- as.Date(soil$sampledate)
+
 
 
 # GROUPING ROTATIONS ------------------------------------------------
@@ -381,7 +381,6 @@ save(crot, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/crot.RData")
 save(plots, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/plots.RData")
 save(site_metadata, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/metadata.RData")
 save(var_names, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/var_names.RData")
-save(soil, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil.RData")
-
+save(SOIL, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil.RData")
 
 

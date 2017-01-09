@@ -6,7 +6,6 @@ load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/agro.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/crot.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/metadata.RData")
 load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/var_names.RData")
-load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/big_soil_data.RData")
 
 library(tidyr)
 library(ggplot2)
@@ -15,13 +14,13 @@ library(stringr)
 
 # BELOW DETACTION LIMIT data ---------------------------------------- <<< NEED TO ADD TO THE MAIN CODE
 # get row numbers of BDL values
-BDL_rows <- grep("<", SOIL_data$value)
+BDL_rows <- grep("<", SOIL$value)
 # get rid off "< " sign in front of the BDL values and convert all values to numeric
-SOIL_data$value <- as.double(sub("< ", "", SOIL_data$value))
-# substitude BDL data with half of its values
-SOIL_data$value[BDL_rows] <- SOIL_data$value[BDL_rows] / 2
+SOIL$value <- as.double(sub("< ", "", SOIL$value))
+# # substitude BDL data with half of its values
+# SOIL$value[BDL_rows] <- SOIL$value[BDL_rows] / 2
 # save as the df as soil data
-soil <- SOIL_data
+soil <- SOIL
 
 # see all SOIL variable codes and description
 var_names %>% filter(grepl("SOIL", code))
