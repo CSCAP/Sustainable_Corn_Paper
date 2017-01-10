@@ -26,6 +26,8 @@ library(scales)
 library(stringr)
 library(dplyr)
 
+
+
 # BELOW DETACTION LIMIT data -------------------------------------------------------
 # get rid off "< " sign in front of the BDL values and convert all values to numeric
 SOIL$value <- as.double(sub("< ", "", SOIL$value))     #substitude "<" with ""
@@ -37,6 +39,10 @@ rm(SOIL)
 # select "soil" data with the variables of interest (BD, SOC, TN)
 soil %>% 
   filter(varname %in% c("SOIL1", "SOIL13", "SOIL14")) -> soil
+
+# get rid of WATERMAN site
+soil %>%
+  filter(site != "WATERMAN") -> soil
 
 # get rid of ONFARM sites
 soil %>% 
@@ -102,10 +108,32 @@ soil$value[which(soil$site == "NAEW.WS118" & soil$value > 2)] <- 1.74
 soil$value[which(soil$site == "STJOHNS" & soil$varname == "SOIL13" & soil$year == "2011" & 
                    soil$depth == "40 to 60")] <- NA
 
+# replace 2013 and 2015 SOC and TN at 40-60 cm for plot 113T in NAEW.WS113
+soil[soil$site == "NAEW.WS113" & 
+       soil$plotid == "113T" & 
+       soil$depth == "40 to 60" & 
+       soil$varname == "SOIL13" &
+       soil$year %in% c(2013, 2015), "value"] <- soil[soil$site == "NAEW.WS113" & 
+                                                        soil$plotid == "113T" & 
+                                                        soil$depth == "40 to 60" & 
+                                                        soil$varname == "SOIL13" &
+                                                        soil$year == 2014, "value"]
+soil[soil$site == "NAEW.WS113" & 
+       soil$plotid == "113T" & 
+       soil$depth == "40 to 60" & 
+       soil$varname == "SOIL14" &
+       soil$year %in% c(2013, 2015), "value"] <- soil[soil$site == "NAEW.WS113" & 
+                                                        soil$plotid == "113T" & 
+                                                        soil$depth == "40 to 60" & 
+                                                        soil$varname == "SOIL14" &
+                                                        soil$year == 2014, "value"]
 
 
 
 # SELECT PLOTS -------------------------------------------------------------
+# get rid of continuous soy and continuous soy with rye cover
+plots %>% filter(!crot %in% c("CR02", "CR04")) -> plots
+
 # select "soil" data with the sites and plots of interest
 # average over replicates (calculate mean of subsamples)
 soil %>% 
@@ -136,12 +164,6 @@ soil_all %>%
 # gives the list of sites that have plot(s) with not enough soil data (and number of plots with insufficient data)
 no_SOC_data_sites %>% group_by(site) %>% summarise(n())
 no_SOC_data_sites$id <- paste(no_SOC_data_sites$site, no_SOC_data_sites$plotid, sep = "_")
-
-# list number of plots by crop rotation groups and sites after removing plots with no SOC data
-plots[!plots$id %in% no_SOC_data_sites$id, ] %>% 
-  group_by(crot, uniqueid) %>% 
-  summarise(total.plots = n()) %>% 
-  spread(key = crot, value = total.plots) -> plots_with_SOC_summary
 
 
 
@@ -266,7 +288,7 @@ soil_SOC[grepl("NAEW", soil_SOC$site) & soil_SOC$depth == "40 to 60", ]$SOIL1 <-
 
 
 
-# SOC ----------------------------------------------------------------------------  DO for TN
+# SOC ----------------------------------------------------------------------------
 # SUBSTITUTING MISSING SOC DATA --------------------------------------------------
 
 
@@ -320,7 +342,7 @@ first_last_year_new %>%
   summarise(count = n())%>%
   arrange(desc(count)) %>%
   filter(count > 1) -> tempo
-# list of plots with the First Year different than the rest of the Site plots
+# list of plots with the Last Year different than the rest of the Site plots
 first_last_year_new %>% 
   filter(site %in% tempo$site, Last_Year != 2015)
 
@@ -343,7 +365,7 @@ first_last_year_new %>%
 
 
 
-# set "id"to be used for sorting of "soil_all_new_data"
+# set "id"to be used for sorting of "soil_SOC"
 soil_SOC %>% 
   mutate(id = paste(site, year, sep = "_")) %>%
   mutate(id2 = paste(site, plotid, depth, sep = "_")) %>%
@@ -370,17 +392,8 @@ soil_SOC$SOIL13[soil_SOC$id3 %in% (first_missing %>% filter(id2 %in% first_missi
   first_missing_subs_13$SOIL13[first_missing_subs_13$id2 %in% first_missing$id2]
 
 
-# there is one more value that need to be substituded in 2011 data from 2015
+# check if there is any missing value with no substitution found in 2013
 setdiff(first_missing$id2, first_missing_subs_13$id2)
-
-soil_SOC[soil_SOC$site == "ORR" & 
-           soil_SOC$plotid == "1102" & 
-           soil_SOC$depth == "10 to 20" & 
-           soil_SOC$year == 2012, "SOIL13"] <-
-  soil_SOC[soil_SOC$site == "ORR" & 
-             soil_SOC$plotid == "1102" & 
-             soil_SOC$depth == "10 to 20" & 
-             soil_SOC$year == 2015, "SOIL13"]
 
 
 
@@ -402,7 +415,7 @@ soil_SOC$SOIL13[soil_SOC$id3 %in% (last_missing %>% filter(id2 %in% last_missing
   last_missing_subs_13$SOIL13[last_missing_subs_13$id2 %in% last_missing$id2]
 
 
-# there is one more value that need to be substituded in 2011 data from 2015
+# check if there is any missing value with no substitution found in 2013
 setdiff(last_missing$id2, last_missing_subs_13$id2)
 
 soil_SOC[soil_SOC$site == "ORR" & 
@@ -422,30 +435,6 @@ soil_SOC[soil_SOC$site == "ORR" &
              soil_SOC$plotid == "3102" & 
              soil_SOC$depth == "40 to 60" & 
              soil_SOC$year == 2012, "SOIL13"]
-
-
-
-
-
-
-
-# find missing BD
-
-# find rows with no BD data in the "First Year"
-# iteration 1
-soil_SOC %>% 
-  filter(id5 %in% fly_first$id5) %>%
-  filter(is.na(SOIL1)) -> first_missing_BD
-
-# find rows with no BD data in the "Last Year"
-# iteration 1
-soil_SOC %>%
-  filter(id5 %in% fly_last$id5) %>%
-  filter(is.na(SOIL1)) -> last_missing_BD
-
-# the END of the missing value substitutions
-
-
 
 
 
@@ -475,7 +464,7 @@ soil_SOC %>%
   summarize(CS = sum(CS)) %>%
   mutate(id = paste(site, plotid, sep = "_")) -> CS
 
-# calculate net Carbon Stoack in the top (0-20cm) and bottom (20-60cm) layers
+# calculate net Carbon Stoack in the top (0-20cm), middle (20-40cm) and bottom (40-60cm) layers
 soil_SOC %>% 
   filter(id5 %in% tempo$id5) %>%
   ungroup() %>%
@@ -483,7 +472,7 @@ soil_SOC %>%
   mutate(top_depth = as.numeric(word(depth))) %>% 
   mutate(bot_depth = as.numeric(word(depth, 3))) %>%
   mutate(CS = SOIL1*(bot_depth-top_depth)*100000*SOIL13/100) %>% 
-  mutate(layer = ifelse(bot_depth < 30, "top", "bottom" )) %>%
+  mutate(layer = ifelse(bot_depth < 30, "top", ifelse(bot_depth > 50, "bottom", "middle"))) %>%
   group_by(site, plotid, year, layer) %>%
   summarize(CS = sum(CS)) %>%
   mutate(id = paste(site, plotid, sep = "_")) -> CS2
@@ -530,10 +519,201 @@ merge(CS2, site_metadata[which(names(site_metadata) %in% c("UniqueID",
 
 
 
+# TN ----------------------------------------------------------------------------  
+# SUBSTITUTING MISSING TN DATA --------------------------------------------------
+
+
+
+# FIND years with no SOIL14 data for each plot 
+soil_TN %>%           
+  group_by(site, plotid, year) %>%
+  summarise_at(vars(matches("SOIL")), mean, na.rm = T) %>%
+  ungroup() %>%
+  mutate(id = paste(site, plotid, year, sep = "_")) %>%
+  filter(is.na(SOIL14)) -> soil_no_data_years
+
+# remove plot-years with no SOIL14 data from "soil_TN" 
+soil_TN %>% 
+  mutate(id = paste(site, plotid, year, sep = "_")) %>% 
+  filter(!id %in% soil_no_data_years$id) -> soil_TN
+
+
+## FIRST YEAR of SITES/PLOTS --------------------------
+# find the first and the last soil years 
+soil_TN %>% 
+  group_by(site) %>% 
+  summarise('First Year' = min(year), 
+            'Last Year' = max(year),
+            'delta(TN)' = (max(year) - min(year))) -> first_last_year
+
+soil_TN %>% 
+  group_by(site, plotid) %>% 
+  summarise('First_Year' = min(year), 
+            'Last_Year' = max(year),
+            'delta(TN)' = (max(year) - min(year))) -> first_last_year_new
+
+# find sites that have plots with different first years for different plots
+first_last_year_new %>% 
+  group_by(site, First_Year) %>% 
+  summarise() %>%
+  group_by(site) %>%
+  summarise(count = n())%>%
+  arrange(desc(count)) %>%
+  filter(count > 1) -> tempo
+# list of plots with the First Year different than the rest of the Site plots
+first_last_year_new %>% 
+  filter(site %in% tempo$site, First_Year != 2011)
+
+
+# find sites that have plots with different last years for different plots
+first_last_year_new %>% 
+  group_by(site, Last_Year) %>% 
+  summarise() %>%
+  group_by(site) %>%
+  summarise(count = n())%>%
+  arrange(desc(count)) %>%
+  filter(count > 1) -> tempo
+# list of plots with the Last Year different than the rest of the Site plots
+first_last_year_new %>% 
+  filter(site %in% tempo$site, Last_Year != 2015)
+
+
+
+
+# creat ids for "first_last_year_new" and stor as "fly_first" and "fly_last"
+first_last_year_new %>% 
+  mutate(id  = paste(site, First_Year, sep = "_")) %>%
+  mutate(id4 = paste(site, plotid, sep = "_")) %>% 
+  mutate(id5 = paste(site, plotid, First_Year, sep = "_")) -> fly_first
+first_last_year_new %>% 
+  mutate(id  = paste(site, Last_Year, sep = "_")) %>%
+  mutate(id4 = paste(site, plotid, sep = "_")) %>%
+  mutate(id5 = paste(site, plotid, Last_Year, sep = "_")) -> fly_last
+
+
+
+
+
+
+
+# set "id"to be used for sorting of "soil_TN"
+soil_TN %>% 
+  mutate(id = paste(site, year, sep = "_")) %>%
+  mutate(id2 = paste(site, plotid, depth, sep = "_")) %>%
+  mutate(id3 = paste(site, plotid, year, depth, sep = "_")) %>%
+  mutate(id4 = paste(site, plotid, sep = "_")) %>%
+  mutate(id5 = paste(site, plotid, year, sep = "_")) -> soil_TN
+
+
+# find rows with no TN data in the "First Year"
+soil_TN %>% 
+  filter(id5 %in% fly_first$id5) %>%
+  filter(is.na(SOIL14)) -> first_missing
+
+# find values corresponding to the "first_missing" data in non-first-year
+soil_TN %>% 
+  filter(!id5 %in% fly_first$id5) %>%   #choose all no-first-year data
+  filter(id2 %in% first_missing$id2) %>% 
+  ungroup() %>%
+  filter(year == 2013) %>% 
+  select(id, id2, id3, SOIL14) -> first_missing_subs_14
+
+# replace missing SOIL14 values in 2011 with substitutes from 2013
+soil_TN$SOIL14[soil_TN$id3 %in% (first_missing %>% filter(id2 %in% first_missing_subs_14$id2))$id3] <- 
+  first_missing_subs_14$SOIL14[first_missing_subs_14$id2 %in% first_missing$id2]
+
+
+# check if there is any missing value with no substitution found in 2013
+setdiff(first_missing$id2, first_missing_subs_14$id2)
+
+
+
+# find rows with no TN data in the "Last Year"
+soil_TN %>%
+  filter(id5 %in% fly_last$id5) %>%
+  filter(is.na(SOIL14)) -> last_missing
+
+# find values corresponding to the "last_missing" data in non-last-year
+soil_TN %>%
+  filter(!id5 %in% fly_last$id5) %>%   #choose all no-first-year data
+  filter(id2 %in% last_missing$id2) %>% 
+  ungroup() %>%
+  filter(year < 2013) %>%    # 2011 was choosen since there is no data in 2013
+  select(id, id2, id3, SOIL14) -> last_missing_subs_14
+
+# replace missing SOIL14 values in 2015 with substitutes from 2011
+soil_TN$SOIL14[soil_TN$id3 %in% (last_missing %>% filter(id2 %in% last_missing_subs_14$id2))$id3] <- 
+  last_missing_subs_14$SOIL14[last_missing_subs_14$id2 %in% last_missing$id2]
+
+
+# check if there is any missing value with no substitution found in 2013
+setdiff(last_missing$id2, last_missing_subs_14$id2)
+
+
+
+# filter all data so only first and last year values remain
+first_last_year_new %>% 
+  mutate(`delta(TN)` = NULL) %>%
+  ungroup() %>%
+  gather(key = FLY, value = year, First_Year:Last_Year) %>%
+  mutate(id5 = paste(site, plotid, year, sep = "_")) -> tempo
+
+# calculate average Total Nitrogen in the soil profile 0-60 cm
+soil_TN %>% 
+  filter(id5 %in% tempo$id5) %>%
+  ungroup() %>%
+  select(site, plotid, year, depth, SOIL14) %>%
+  mutate(top_depth = as.numeric(word(depth))) %>% 
+  mutate(bot_depth = as.numeric(word(depth, 3))) %>%
+  mutate(value = SOIL14 * (bot_depth - top_depth) / 60) %>%
+  group_by(site, plotid, year) %>%
+  summarize(TN = sum(value)) %>%
+  mutate(id = paste(site, plotid, sep = "_")) -> TN
+
+# calculate average Total Nitrogen in the top (0-20cm), middle(20-40cm) and bottom (20-60cm) layers
+soil_TN %>% 
+  filter(id5 %in% tempo$id5) %>%
+  ungroup() %>%
+  select(site, plotid, year, depth, SOIL14) %>%
+  mutate(top_depth = as.numeric(word(depth))) %>% 
+  mutate(bot_depth = as.numeric(word(depth, 3))) %>%
+  mutate(layer = ifelse(bot_depth < 30, "top", ifelse(bot_depth > 50, "bottom", "middle"))) %>%
+  group_by(site, plotid, year, layer) %>%
+  summarize(TN = mean(SOIL14)) %>%
+  mutate(id = paste(site, plotid, sep = "_")) -> TN2
+
+
+merge(TN, plots[- which(names(plots) %in% c("plotid"))], by = "id", all.x = TRUE) %>%
+  select(site, plotid, year, TN, crot, crot_name, rotation, tillage, drainage, nitrogen) -> TN
+merge(TN2, plots[- which(names(plots) %in% c("plotid"))], by = "id", all.x = TRUE) %>%  
+  select(site, plotid, year, TN, layer, crot, crot_name, rotation, tillage, drainage, nitrogen) -> TN2
+
+
+merge(TN, site_metadata[which(names(site_metadata) %in% c("UniqueID", 
+                                                          "Latitude", 
+                                                          "Longitude", 
+                                                          "County", 
+                                                          "State", 
+                                                          "Ave Plot Size (ha)"))], 
+      by.x = "site", by.y = "UniqueID", all.x = TRUE) -> TN
+
+
+merge(TN2, site_metadata[which(names(site_metadata) %in% c("UniqueID", 
+                                                           "Latitude", 
+                                                           "Longitude", 
+                                                           "County", 
+                                                           "State", 
+                                                           "Ave Plot Size (ha)"))], 
+      by.x = "site", by.y = "UniqueID", all.x = TRUE) -> TN2
+
+
+
+
 
 
 
 # PLOT TIME ========================================================================================
+
 new_dir <- paste0(getwd(), "/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Soil_Figs/", Sys.Date())
 dir.create(new_dir)
 setwd(new_dir)
@@ -547,340 +727,240 @@ CS %>%
 # to print 
 CS_summary[is.na(CS_summary)] <- "-"
 CS_summary
+# Plots and saves CS figures in the working directory
+source("C:/Users/Gio/Documents/GitHub/CSCAP/Sustainable_Corn_Paper/Code/CS_plotting_2017_01.R")
 
-# aggregated CS by sites --------------------
+TN %>% 
+  group_by(crot, site) %>% 
+  summarise(total.plots = n()/2) %>%            # divide by two because plots are counted twice for FIRST and LAST years
+  spread(key = crot, value = total.plots) -> TN_summary
+# to print 
+TN_summary[is.na(TN_summary)] <- "-"
+TN_summary
+# Plots and saves TN figures in the working directory
+source("C:/Users/Gio/Documents/GitHub/CSCAP/Sustainable_Corn_Paper/Code/TN_plotting_2017_01.R")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# PLOT 1 -------------------- CS average by site
 CS %>%
-  group_by(site) %>%
   select(site, CS, Latitude, Longitude, State, County, `Ave Plot Size (ha)`) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) -> CS_site_plot
+  mutate(State = as.factor(State)) %>%
+  mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  ggplot(aes(x = site, y = CS, fill = State)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "Site ID") +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
+  coord_flip() +
+  theme_light() +
+  ggtitle("Average CS by Site") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot01.png", width = 12, height = 8, dpi = 300)
 
-CS2 %>%
-  group_by(site, layer) %>%
-  select(site, CS, layer, Latitude, Longitude, State, County, `Ave Plot Size (ha)`) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
+
+# PLOT 2 -------------------- CS difference by site
+CS %>%
+  group_by(site, plotid) %>%
+  mutate(fly = ifelse(year == max(year), "last", "first")) %>% 
+  select(site, plotid, CS, Latitude, Longitude, State, `Ave Plot Size (ha)`, fly) %>%
+  spread(fly, CS) %>%
+  mutate(CS_diff = last - first) %>% 
   ungroup() %>%
-  mutate(site = factor(site, levels = unique(site[order(Latitude)]))) %>%
-  mutate(State = as.factor(State))  -> CS2_site_plot
-
-
-
-# PLOT 1
-CS_site_plot %>%
-  ggplot(aes(x=site, y=CS)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(0, 250000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
-  coord_flip() +
-  theme_light() -> PLOT1
-
-#1.a
-PLOT1 + ggtitle("Average CS by Site")
-ggsave(filename = "plot01.png", width = 12, dpi = 300)
-
-#1.b
-PLOT1 + 
-  facet_grid(~ State) + 
-  theme(axis.text.x = element_text(angle = 90))
-ggsave(filename = "plot01b.png", width = 12, dpi = 300)
-
-#1.c
-CS_site_plot %>%
-  ggplot(aes(x=site, y=CS, fill = State)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(0, 250000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
-  coord_flip() +
-  theme_light()
-ggsave(filename = "plot01c.png", width = 12, dpi = 300)
-
-
-# aggregated CS by sites and first-last year (fly) -------------------
-CS %>%
-  group_by(site, plotid) %>%
-  mutate(fly = ifelse(year == max(year), "last", "first")) %>% 
-  select(site, plotid, CS, Latitude, Longitude, State, `Ave Plot Size (ha)`, fly) %>%
-  spread(fly, CS) %>%
-  mutate(CS_diff = last - first) %>% 
-  group_by(site) %>%
   select(site, CS_diff, first, last, Latitude, Longitude, State, `Ave Plot Size (ha)`) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(site = factor(site, levels = site[order(Latitude)])) %>% 
-  mutate(State = as.factor(State)) -> CS_site_fly_plot
-
-# PLOT 2
-CS_site_fly_plot %>%
-  ggplot(aes(x=site, y=CS_diff)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(-100000, 100000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
+  mutate(State = as.factor(State)) %>%
+  mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  ggplot(aes(x = site, y = CS_diff, fill = State)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "Site ID") +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
   coord_flip() +
-  theme_light() -> PLOT2
-
-#2.a
-PLOT2 + ggtitle("Average CS Difference between the First and the Last Data Years by Site")
-ggsave(filename = "plot02.png", width = 12, dpi = 300)
-
-#2.b
-PLOT2 + 
-  facet_grid(~ State) + 
-  theme(axis.text.x = element_text(angle = 90))
-ggsave(filename = "plot02b.png", width = 12, dpi = 300)
-
-#2.c
-CS_site_fly_plot %>%
-  ggplot(aes(x=site, y=CS_diff, fill = State)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(-100000, 100000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
-  coord_flip() +
-  theme_light()
-ggsave(filename = "plot02c.png", width = 12, dpi = 300)
+  theme_light() +
+  ggtitle("Average CS Difference between the First and the Last Data Years by Site") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot02.png", width = 12, height = 8, dpi = 300)
 
 
 
-
-
-
-# aggregated CS by State --------------------
+# PLOT 3 -------------------- CS average by State
 CS %>%
-  group_by(State) %>%
   select(CS, Latitude, Longitude, State) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) -> CS_state_plot
-
-# PLOT 3
-CS_state_plot %>%
-  ggplot(aes(x=State, y=CS)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "US STATE") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     limits = c(0, 250000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
+  mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  ggplot(aes(x = State, y = CS)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "US State") +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
   coord_flip() +
-  theme_light() -> PLOT3
+  theme_light() +
+  ggtitle("Average CS by State") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot03.png", width = 12, height = 8, dpi = 300)
 
-#3.a
-PLOT3 + ggtitle("Average CS by State")
-ggsave(filename = "plot03.png", width = 12, dpi = 300)
 
 
-# aggregated CS by State and first-last year (fly) -------------------
+# PLOT 4 -------------------- CS difference by State
 CS %>%
   group_by(site, plotid) %>%
   mutate(fly = ifelse(year == max(year), "last", "first")) %>% 
   select(site, plotid, CS, Latitude, Longitude, State, `Ave Plot Size (ha)`, fly) %>%
   spread(fly, CS) %>%
   mutate(CS_diff = last - first) %>% 
-  group_by(State) %>%
+  ungroup() %>%
   select(State, CS_diff, first, last, Latitude, Longitude) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(State = factor(State, levels = State[order(Latitude)])) -> CS_state_fly_plot
-
-# PLOT 4
-CS_state_fly_plot %>%
-  ggplot(aes(x=State, y=CS_diff)) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "US STATE") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(-50000, 50000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
+  mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  ggplot(aes(x = State, y = CS_diff)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "US State") +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
   coord_flip() +
-  theme_light() -> PLOT4
+  theme_light() +
+  ggtitle("Average CS Difference between the First and the Last Data Years by State") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot04.png", width = 12, height = 8, dpi = 300)
 
-#4.a
-PLOT4 + ggtitle("Average CS Difference between the First and the Last Data Years by State")
-ggsave(filename = "plot04.png", width = 12, dpi = 300)
 
 
-
-# aggregated CS by Rotation --------------------
+# PLOT5 --------------------- CS by rotation
 CS %>%
-  group_by(crot) %>%
   select(crot, crot_name, CS) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(crot = as.factor(crot)) -> CS_crot_plot
-
-# PLOT 5
-CS_crot_plot %>%
+  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=CS, fill=I(color))) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "Crop Rotation ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     limits = c(0, 150000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
-  theme_bw() -> PLOT5
-
-#5.a
-PLOT5 + 
-  ggtitle("Average CS by Crop Rotation") + 
-  geom_text(aes(label=str_wrap(crot_name, width=8)), vjust=-0.5, size = 4)
-ggsave(filename = "plot05.png", width = 12, dpi = 300)
+  ggplot(aes(x = crot_name, y = CS, fill = I(color))) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
+  coord_flip() +
+  theme_light() +
+  ggtitle("Average CS by Crop Rotation") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot05.png", width = 12, height = 8, dpi = 300)
 
 
-# aggregated CS by Rotation and first-last year (fly) -------------------
+ 
+# PLOT6 --------------------- CS difference by rotation
 CS %>%
   group_by(site, plotid) %>%
   mutate(fly = ifelse(year == max(year), "last", "first")) %>% 
   select(site, plotid, crot, crot_name, CS, fly) %>%
   spread(fly, CS) %>%
   mutate(CS_diff = last - first) %>% 
-  group_by(crot) %>%
+  ungroup() %>%
   select(crot, crot_name, CS_diff, first, last) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  mutate(crot = as.factor(crot)) -> CS_crot_fly_plot
-
-# PLOT 6
-CS_crot_fly_plot %>%
+  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=CS_diff, fill = I(color))) + 
-  geom_bar(stat = "identity") +
-  scale_x_discrete(name = "Crop Rotaion ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     limits = c(-15000, 15000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
+  ggplot(aes(x = crot_name, y = CS_diff, fill = I(color))) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
   coord_flip() +
-  theme_light() -> PLOT6
-
-#6.a
-PLOT6 + 
-  ggtitle("Average CS Difference between the First and the Last Data Years by Crop Rotation") +
-  geom_text(aes(label=str_wrap(crot_name, width = 10)), hjust = "outward", size = 4)
-ggsave(filename = "plot06.png", width = 12, dpi = 300)
-
+  theme_light() +
+  ggtitle("Average CS Difference between the First and the Last Data Years\nby Crop Rotation") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot06.png", width = 12, height = 8, dpi = 300)
 
 
 
-
-# aggregated CS by Rotation and others --------------------
+# PLOT7 --------------------- CS by rotation and Tillage
 CS %>% 
   mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  group_by(crot, tillage) %>%
   select(crot, crot_name, tillage, CS) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
-  ungroup() %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage))  -> CS_crot_plus_plot
-
-# PLOT 7
-CS_crot_plus_plot %>%
+  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
+  mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=CS, fill=I(color))) + 
-  geom_bar(stat = "identity") +
+  ggplot(aes(x = crot_name, y = CS, fill = I(color))) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   facet_grid( ~ tillage) +
-  scale_x_discrete(name = "Crop Rotation ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(0, 200000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
-  theme_bw() -> PLOT7
-
-#7.a
-PLOT7 + 
+  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
+  theme_light() +
   ggtitle("Average CS by Crop Rotation grouped by Drainage and Tillage") + 
-  geom_text(aes(label=str_wrap(crot_name, width=12)), vjust=-0.5, size = 2.5)
-ggsave(filename = "plot07.png", width = 12, dpi = 300)
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text.x = element_text(angle=90, vjust=0.5, size=12),
+        axis.text.y = element_text(size = 12))
+ggsave(filename = "plot07.png", width = 12, height = 8, dpi = 300)
 
 
-# aggregated CS by Rotation and other in first-last year (fly) -------------------
+
+# PLOT8 --------------------- CS difference by rotation and tillage
 CS %>%
   group_by(site, plotid) %>%
   mutate(fly = ifelse(year == max(year), "last", "first")) %>% 
   select(site, plotid, crot, crot_name, tillage, CS, fly) %>%
   spread(fly, CS) %>%
   mutate(CS_diff = last - first) %>% 
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
-  group_by(crot, tillage) %>%
-  select(crot, crot_name, tillage, CS_diff, first, last) %>%
-  summarise_each(funs(if(is.numeric(.)) mean(., na.rm = TRUE) else first(.))) %>%
   ungroup() %>%
-  mutate(crot = as.factor(crot)) %>%
-  mutate(tillage = as.factor(tillage)) -> CS_crot_plus_fly_plot
-
-
-# PLOT 8
-CS_crot_plus_fly_plot %>%
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) %>%       #TIL4 becomes No-Till too
+  select(crot, crot_name, tillage, CS_diff, first, last) %>%
+  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
+  mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
-  ggplot(aes(x=crot, y=CS_diff, fill=I(color))) + 
-  geom_bar(stat = "identity") +
+  select(crot, crot_name, CS_diff, first, last, tillage) %>%
+  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
+  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>% 
+  ggplot(aes(x = crot_name, y = CS_diff, fill = I(color))) + 
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   facet_grid( ~ tillage) +
-  scale_x_discrete(name = "Crop Rotaion ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     #limits = c(-40000, 28000),
-                     labels = comma) + 
-  theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
-        axis.text.y  = element_text(size=12)) +
+  scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
+  scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
   coord_flip() +
-  theme_light() -> PLOT8
+  theme_light() +
+  ggtitle("Average CS Difference between the First and the Last Data Years\nby Crop Rotation grouped by Drainage and Tillage") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+ggsave(filename = "plot08.png", width = 12, height = 8, dpi = 300)
 
-#8.a
-PLOT8 + 
-  ggtitle("Average CS Difference between the First and the Last Data Years by Crop Rotation grouped by Drainage and Tillage") +
-  geom_text(aes(label=str_wrap(crot_name, width = 10)), hjust = "outward", size = 2.5)
-ggsave(filename = "plot08.png", width = 12, dpi = 300)
 
 
-#
+
+
+
+
+
+
+
+
+
+
+
 
 
 
 
 
 # # PLOT 1 with 2 layers
-CS2_site_plot %>%
+CS2 %>%
   ggplot(aes(x=site, y=CS)) + 
   geom_bar(aes(fill = layer), stat = "identity", position = "dodge") +
   scale_x_discrete(name = "SITE ID") +
-  scale_y_continuous(name = "CS (kg C/ha)",
-                     limits = c(0, 150000),
-                     labels = comma) + 
+  scale_y_continuous(name = "CS (kg C/ha)", labels = comma) + 
   theme(axis.title.x = element_text(face="bold", colour="goldenrod", size=16),
         axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
         axis.title.y = element_text(face="bold", colour="goldenrod", size=16),
@@ -1148,7 +1228,7 @@ ggsave(filename = "plot08a.png", width = 12, dpi = 300)
 
 
 
-#
+
 
 
 
