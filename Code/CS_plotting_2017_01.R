@@ -14,6 +14,7 @@ CS %>%
   select(site, CS, Latitude, Longitude, State, County, `Ave Plot Size (ha)`) %>%
   mutate(State = as.factor(State)) %>%
   mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = site, y = CS, fill = State)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Site ID") +
@@ -38,6 +39,7 @@ CS %>%
   select(site, CS_diff, first, last, Latitude, Longitude, State, `Ave Plot Size (ha)`) %>%
   mutate(State = as.factor(State)) %>%
   mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = site, y = CS_diff, fill = State)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Site ID") +
@@ -56,6 +58,7 @@ ggsave(filename = "plot02.png", width = 12, height = 8, dpi = 300)
 CS %>%
   select(CS, Latitude, Longitude, State) %>%
   mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = State, y = CS)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "US State") +
@@ -80,6 +83,7 @@ CS %>%
   ungroup() %>%
   select(State, CS_diff, first, last, Latitude, Longitude) %>%
   mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = State, y = CS_diff)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "US State") +
@@ -99,6 +103,7 @@ CS %>%
   select(crot, crot_name, CS) %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  
   ggplot(aes(x = crot_name, y = CS, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
@@ -124,6 +129,7 @@ CS %>%
   select(crot, crot_name, CS_diff, first, last) %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  
   ggplot(aes(x = crot_name, y = CS_diff, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
@@ -145,8 +151,16 @@ CS %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
+  group_by(crot, tillage) %>%
+  mutate(count = n()) %>%  
+  mutate(mean = mean(CS)) %>%
+  mutate(sd = sd(CS)) %>%
+  mutate(se = sd/sqrt(count)) %>%
+  
   ggplot(aes(x = crot_name, y = CS, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
+  geom_text(aes(y = 150000, label = count, colour = I("grey60")), vjust = 1.5, size = 7) +
   facet_grid( ~ tillage) +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
   scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
@@ -155,7 +169,8 @@ CS %>%
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.x = element_text(angle=90, vjust=0.5, size=12),
-        axis.text.y = element_text(size = 12))
+        axis.text.y = element_text(size = 12)) +
+  coord_cartesian(ylim = c(0, 150000))
 ggsave(filename = "plot07.png", width = 12, height = 8, dpi = 300)
 
 
@@ -173,20 +188,27 @@ CS %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
-  select(crot, crot_name, CS_diff, first, last, tillage) %>%
-  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>% 
+  group_by(crot, tillage) %>%
+  mutate(count = n()) %>%  
+  mutate(mean = mean(CS_diff)) %>%
+  mutate(sd = sd(CS_diff)) %>%
+  mutate(se = sd/sqrt(count)) %>% 
+  
   ggplot(aes(x = crot_name, y = CS_diff, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
+  geom_text(aes(y = 14000, label = count, colour = I("grey60")), vjust = 1.5, size = 7) +
   facet_grid( ~ tillage) +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
   scale_y_continuous(name = "Carbon Stock (kg C/ha)", labels = comma) +
-  coord_flip() +
+  #coord_flip() +
   theme_light() +
   ggtitle("Average CS Difference between the First and the Last Data Years\nby Crop Rotation grouped by Drainage and Tillage") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
-        axis.text  = element_text(size = 12))
+        axis.text.x = element_text(angle=90, vjust=0.5, size=12),
+        axis.text.y = element_text(size = 12)) +
+  coord_cartesian(ylim = c(-15000, 15000))
 ggsave(filename = "plot08.png", width = 12, height = 8, dpi = 300)
 
 

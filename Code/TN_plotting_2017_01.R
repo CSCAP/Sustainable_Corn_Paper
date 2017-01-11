@@ -14,6 +14,7 @@ TN %>%
   select(site, TN, Latitude, Longitude, State, County, `Ave Plot Size (ha)`) %>%
   mutate(State = as.factor(State)) %>%
   mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = site, y = TN, fill = State)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Site ID") +
@@ -38,6 +39,7 @@ TN %>%
   select(site, TN_diff, first, last, Latitude, Longitude, State, `Ave Plot Size (ha)`) %>%
   mutate(State = as.factor(State)) %>%
   mutate(site = factor(site, levels = unique(site[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = site, y = TN_diff, fill = State)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Site ID") +
@@ -56,6 +58,7 @@ ggsave(filename = "TN_plot02.png", width = 12, height = 8, dpi = 300)
 TN %>%
   select(TN, Latitude, Longitude, State) %>%
   mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = State, y = TN)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "US State") +
@@ -80,6 +83,7 @@ TN %>%
   ungroup() %>%
   select(State, TN_diff, first, last, Latitude, Longitude) %>%
   mutate(State = factor(State, levels = unique(State[order(Latitude, decreasing = FALSE)]))) %>%
+  
   ggplot(aes(x = State, y = TN_diff)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "US State") +
@@ -99,6 +103,7 @@ TN %>%
   select(crot, crot_name, TN) %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  
   ggplot(aes(x = crot_name, y = TN, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
@@ -124,6 +129,7 @@ TN %>%
   select(crot, crot_name, TN_diff, first, last) %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>%
+  
   ggplot(aes(x = crot_name, y = TN_diff, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
@@ -145,8 +151,16 @@ TN %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
+  group_by(crot, tillage) %>%
+  mutate(count = n()) %>%  
+  mutate(mean = mean(TN)) %>%
+  mutate(sd = sd(TN)) %>%
+  mutate(se = sd/sqrt(count)) %>%
+  
   ggplot(aes(x = crot_name, y = TN, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
+  geom_text(aes(y = 0.16, label = count, colour = I("grey60")), vjust = 1.5, size = 7) +
   facet_grid( ~ tillage) +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
   scale_y_continuous(name = "Total Nitrogen (kg N/ha)", labels = comma) +
@@ -155,7 +169,8 @@ TN %>%
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.x = element_text(angle=90, vjust=0.5, size=12),
-        axis.text.y = element_text(size = 12))
+        axis.text.y = element_text(size = 12)) +
+  coord_cartesian(ylim = c(0, 0.16))
 ggsave(filename = "TN_plot07.png", width = 12, height = 8, dpi = 300)
 
 
@@ -173,18 +188,25 @@ TN %>%
   mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
   mutate(tillage = as.factor(tillage)) %>%
   mutate(color = ifelse(crot == "CR05" & tillage == "CT", "orange", "grey40")) %>%
-  select(crot, crot_name, TN_diff, first, last, tillage) %>%
-  mutate(crot_name = factor(crot_name, levels = unique(crot_name[order(crot, decreasing = FALSE)]))) %>%
-  mutate(color = ifelse(crot == "CR05", "orange", "grey40")) %>% 
+  group_by(crot, tillage) %>%
+  mutate(count = n()) %>%  
+  mutate(mean = mean(TN_diff)) %>%
+  mutate(sd = sd(TN_diff)) %>%
+  mutate(se = sd/sqrt(count)) %>%
+  
   ggplot(aes(x = crot_name, y = TN_diff, fill = I(color))) + 
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") +
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
+  geom_text(aes(y = 0.025, label = count, colour = I("grey60")), vjust = 1.5, size = 7) +
   facet_grid( ~ tillage) +
   scale_x_discrete(name = "Crop Rotation", labels = function(x) str_wrap(x, width = 10)) +
   scale_y_continuous(name = "Total Nitrogen (kg N/ha)", labels = comma) +
-  coord_flip() +
+  #coord_flip() +
   theme_light() +
   ggtitle("Average TN Difference between the First and the Last Data Years\nby Crop Rotation grouped by Drainage and Tillage") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
-        axis.text  = element_text(size = 12))
+        axis.text.x = element_text(angle=90, vjust=0.5, size=12),
+        axis.text.y = element_text(size = 12)) +
+  coord_cartesian(ylim = c(-0.01, 0.025))
 ggsave(filename = "TN_plot08.png", width = 12, height = 8, dpi = 300)
