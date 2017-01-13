@@ -271,10 +271,19 @@ soil_TN %>%
 
 # average BD calculation --------------------------------------------------------------
 
+plots %>% 
+  select(id, tillage) %>% 
+  mutate(id = as.character(id)) %>%
+  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) -> tempo
+
 # calculate average BD per site per depth
 soil_SOC %>%
-  group_by(site, depth) %>% 
-  mutate(SOIL1 = mean(SOIL1, na.rm = TRUE)) -> soil_SOC
+  mutate(id = paste(site, plotid, sep = "_")) %>% 
+  left_join(tempo, by = "id") %>%
+  group_by(site, depth, tillage) %>%
+  mutate(SOIL1 = mean(SOIL1, na.rm = TRUE)) %>%
+  ungroup() %>%
+  select(site, plotid, year, depth, SOIL1, SOIL13, SOIL14) -> soil_SOC
 
 # check if there is any missing BD values
 soil_SOC %>% filter(is.na(SOIL1))
