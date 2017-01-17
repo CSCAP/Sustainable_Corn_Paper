@@ -169,7 +169,8 @@ CS %>%
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.x = element_text(angle=90, vjust=0.5, size=12),
-        axis.text.y = element_text(size = 12)) +
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 14)) +
   coord_cartesian(ylim = c(0, 150000))
 ggsave(filename = "plot07.png", width = 12, height = 8, dpi = 300)
 
@@ -207,7 +208,8 @@ CS %>%
   theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.x = element_text(angle=90, vjust=0.5, size=12),
-        axis.text.y = element_text(size = 12)) +
+        axis.text.y = element_text(size = 12),
+        strip.text = element_text(size = 14)) +
   coord_cartesian(ylim = c(-15000, 15000))
 ggsave(filename = "plot08.png", width = 12, height = 8, dpi = 300)
 
