@@ -142,7 +142,7 @@ library(readxl)
 
 setwd("~/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Water_Figs")
 
-NO3_N_Loss <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/NO3-N Loss.xlsx", sheet = "Data", 
+NO3_N_Loss <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", sheet = "Data", 
                          col_types = c("text", "text", "text", "numeric", "numeric", "blank", "blank"))
 
 
@@ -161,7 +161,7 @@ NO3_N_Loss %>%
   geom_text(aes(label = outlier, colour = I("grey50")), vjust = 0.5, hjust = -0.1) +
   scale_x_discrete(name ="") +
   theme_light() +
-  ggtitle("Average Nitrate Loss") +
+  ggtitle("Nitrate-N Loss") +
   theme(#panel.grid.minor = element_blank(),
         #panel.grid.major.y = element_blank(),
         plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
@@ -178,21 +178,87 @@ NO3_N_Loss %>%
   mutate(number = n()) %>%
   mutate(se = sd(`NO3-N Loss (kg/ha)`)/sqrt(number)) %>%
   mutate(mean = mean(`NO3-N Loss (kg/ha)`)) %>%
-  ggplot(aes(x = Treatment, y = `NO3-N Loss (kg/ha)`, fill = I("orange"))) +
+  ggplot(aes(x = Treatment, y = `NO3-N Loss (kg/ha)`, fill = Treatment)) +
   geom_bar(stat = "summary", fun.y = "mean", position = "stack") + 
   geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
   geom_text(aes(y = 35, label = number, colour = I("grey60")), vjust = 1, size = 7) +
   scale_x_discrete(name ="") +
   theme_light() +
-  ggtitle("Average Nitrate Loss") +
+  ggtitle("Average Nitrate-N Loss") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text = element_text(size = 12, vjust = 0.5)) +
-  coord_cartesian(ylim = c(0, 35))
+  coord_cartesian(ylim = c(0, 35)) +
+  scale_fill_brewer()
 ggsave(filename = "no3n_02.png", width = 12, height = 8, dpi = 300)
 
 
+NO3_N_Loss %>%
+  filter(complete.cases(.)) %>%
+  filter(YEAR > 2010) %>%
+  filter(SITE != "WATERMAN") %>%
+  filter(Treatment != "shallow drainage") %>%
+  group_by(Treatment, YEAR) %>%
+  mutate(number = n()) %>%
+  mutate(se = sd(`NO3-N Loss (kg/ha)`)/sqrt(number)) %>%
+  mutate(mean = mean(`NO3-N Loss (kg/ha)`)) %>%
+  ggplot(aes(x = Treatment, y = `NO3-N Loss (kg/ha)`, fill = Treatment)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") + 
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3, size = 1) +
+  facet_grid( ~ YEAR) +
+  #geom_text(aes(y = 50, label = number, colour = I("grey60")), vjust = 1, size = 7) +
+  scale_x_discrete(name ="") +
+  theme_light() +
+  ggtitle("Annual Nitrate-N Loss") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text.y = element_text(size = 12, vjust = 0.5),
+        axis.text.x = element_blank()) +
+  scale_fill_brewer() +
+  coord_cartesian(ylim = c(0, 50))
+ggsave(filename = "no3n_03_5years.png", width = 12, height = 8, dpi = 300)
 
+
+
+NO3_N_Loss %>%
+  filter(complete.cases(.)) %>%
+  filter(YEAR > 2010) %>%
+  filter(SITE != "WATERMAN") %>%
+  filter(Treatment != "shallow drainage") %>%
+  ggplot(aes(x = Treatment, y = `NO3-N Loss (kg/ha)`, fill = Treatment)) +
+  geom_boxplot() + 
+  facet_grid( ~ YEAR) +
+  #geom_text(aes(y = 50, label = number, colour = I("grey60")), vjust = 1, size = 7) +
+  scale_x_discrete(name ="") +
+  theme_light() +
+  ggtitle("Annual Nitrate-N Loss") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text.y = element_text(size = 12, vjust = 0.5),
+        axis.text.x = element_blank()) +
+  scale_fill_brewer()
+ggsave(filename = "no3n_04_5years.png", width = 12, height = 8, dpi = 300)
+
+
+
+
+NO3_N_Loss %>%
+  filter(complete.cases(.)) %>%
+  filter(YEAR > 2010) %>%
+  filter(SITE != "WATERMAN") %>%
+  filter(Treatment != "shallow drainage") %>%
+  ggplot(aes(x = Treatment, y = `NO3-N Loss (kg/ha)`, fill = Treatment)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") + 
+  facet_grid(SITE ~ YEAR) +
+  scale_x_discrete(name ="") +
+  theme_light() +
+  ggtitle("Annual Nitrate-N Loss by Sites") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text.y = element_text(size = 12, vjust = 0.5),
+        axis.text.x = element_blank()) +
+  scale_fill_brewer(palette = "Blues")
+ggsave(filename = "no3n_05_5years.png", width = 12, height = 8, dpi = 300)
 
 NO3_N_Loss %>%
   filter(complete.cases(.)) %>%
@@ -209,14 +275,14 @@ NO3_N_Loss %>%
   #geom_text(aes(y = 50, label = number, colour = I("grey60")), vjust = 1, size = 7) +
   scale_x_discrete(name ="") +
   theme_light() +
-  ggtitle("Average Nitrate Loss") +
+  ggtitle("Annual Nitrate-N Loss") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.y = element_text(size = 12, vjust = 0.5),
         axis.text.x = element_blank()) +
   scale_fill_brewer() +
   coord_cartesian(ylim = c(0, 50))
-ggsave(filename = "no3n_03.png", width = 12, height = 8, dpi = 300)
+ggsave(filename = "no3n_03_l.png", width = 12, height = 8, dpi = 300)
 
 
 
@@ -230,13 +296,13 @@ NO3_N_Loss %>%
   #geom_text(aes(y = 50, label = number, colour = I("grey60")), vjust = 1, size = 7) +
   scale_x_discrete(name ="") +
   theme_light() +
-  ggtitle("Average Nitrate Loss") +
+  ggtitle("Annual Nitrate-N Loss") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.y = element_text(size = 12, vjust = 0.5),
         axis.text.x = element_blank()) +
   scale_fill_brewer()
-ggsave(filename = "no3n_04.png", width = 12, height = 8, dpi = 300)
+ggsave(filename = "no3n_04_l.png", width = 12, height = 8, dpi = 300)
 
 
 
@@ -250,13 +316,29 @@ NO3_N_Loss %>%
   facet_grid(SITE ~ YEAR) +
   scale_x_discrete(name ="") +
   theme_light() +
-  ggtitle("Average Nitrate Loss by Sites") +
+  ggtitle("Annual Nitrate-N Loss by Sites") +
   theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
         axis.title = element_text(face = "bold", colour = "grey30", size = 16),
         axis.text.y = element_text(size = 12, vjust = 0.5),
         axis.text.x = element_blank()) +
   scale_fill_brewer(palette = "Blues")
-ggsave(filename = "no3n_05.png", width = 12, height = 8, dpi = 300)
+ggsave(filename = "no3n_05_l.png", width = 12, height = 8, dpi = 300)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
