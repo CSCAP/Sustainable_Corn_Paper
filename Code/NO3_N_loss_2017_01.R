@@ -137,13 +137,71 @@ dpac %>%
 
 
 
+
+# MANAGE db
+manage_drain <- 
+  read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/MANAGE DB/manage2016/drain_load_short_10.2015.xlsx")
+
+manage_drain %>% 
+  select(RefID, Year, `Watershed ID`, State, 
+         `Drainage type`, `Drain depth (m)`, `Drain spacing (m)`,
+         `Land Use`, Tillage, `Dominant Soil Type`, 
+         `Crop 1`, `Avg Crop 1 Yield (Mg/ha)`, `Crop 2`, `Avg Crop 2 Yield (Mg/ha)`,
+         `Avg Precipitation (mm)`, `Drainage Discharge (mm)`, 
+         `Avg Soil Loss (kg/ha)`, `Avg Dissolved N (kg/ha)`, `Avg Dissolved P (kg/ha)`, `Avg Total P (kg/ha)`,
+         Comments) %>%
+  filter(!is.na(`Avg Dissolved N (kg/ha)`)) %>%                # select entries with NO3-N load data
+  filter(grepl("corn", `Land Use`, ignore.case = TRUE)) %>%    # select rotations with corn
+  filter(!RefID %in% c(52, 80, 95)) %>%                        # remove papers with repetitive NO3-N load data
+  mutate(ID = as.factor(paste(RefID, `Watershed ID`, sep = "_")),
+         state = as.factor(State),
+         siteID = as.factor(RefID),
+         plotID = as.factor(`Watershed ID`),
+         year = as.numeric(Year),
+         rotation = `Land Use`,
+         tillage = Tillage,
+         soil_type = `Dominant Soil Type`,
+         drainage_type = as.factor(`Drainage type`),
+         drainage_spacing = as.numeric(`Drain spacing (m)`),
+         drainage_depth = as.numeric(`Drain depth (m)`),
+         #N_applied = as.numeric(`Avg N Applied (kg/ha)`),
+         #P_applied = as.numeric(`Avg P Applied (kg/ha)`),
+         crop_1 = as.factor(str_to_lower(`Crop 1`)),
+         crop_yield_1 = as.numeric(`Avg Crop 1 Yield (Mg/ha)`),
+         crop_2 = as.factor(str_to_lower(`Crop 2`)),
+         crop_yield_2 = as.numeric(`Avg Crop 2 Yield (Mg/ha)`),
+         precip_mm = as.double(`Avg Precipitation (mm)`),
+         drainage_mm = as.double(`Drainage Discharge (mm)`),
+         soil_loss = as.double(`Avg Soil Loss (kg/ha)`),
+         N_load = as.double(`Avg Dissolved N (kg/ha)`),
+         #N_form = `Form Dissolved N`,
+         P_load = as.double(`Avg Dissolved P (kg/ha)`),
+         #P_form = `Form Dissolved P`,
+         #sample_timing = `Sample Collection Timing`,
+         comments = Comments) %>%
+  select(ID:comments) -> manage_NO3_N
+
+
+
+manage_NO3_N %>%
+  ggplot(aes(x=drainage_type, y=N_load)) +
+  geom_boxplot(na.rm = TRUE) +
+  stat_summary(fun.y = "mean", geom = "point", size = 3, color = "blue", shape = 3, stroke = 1.5) +
+  scale_x_discrete(name = "Drainage Type", labels = function(x) str_wrap(x, width = 15)) +
+  scale_y_continuous(name = "Nitrate-N Load, kg/ha", labels = comma) +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12))
+
+
+
 # ANALYZE THIS =============================================================================
 library(readxl)
 
 setwd("~/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Water_Figs")
 
-NO3_N_Loss <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", sheet = "Data", 
-                         col_types = c("text", "text", "text", "numeric", "numeric", "blank", "blank"))
+NO3_N_Loss <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", sheet = "Sheet1", 
+                         col_types = c("text", "text", "text", "text", "numeric", "numeric"))
 
 
 NO3_N_Loss %>%
@@ -326,20 +384,62 @@ ggsave(filename = "no3n_05_l.png", width = 12, height = 8, dpi = 300)
 
 
 
+# MERGE TWO DATA ==============================================================
+manage_NO3_N %>%
+  select(state, siteID, plotID, 
+         drainage_type, year, N_load) %>%
+  mutate(project = "MANAGE") -> manage
+
+NO3_N_Loss %>%
+  filter(complete.cases(.)) %>%
+  filter(SITE != "WATERMAN") %>%
+  mutate(project = "CSCAP") -> cscap
+
+names(manage) -> names(cscap)
+
+bind_rows(cscap, manage) %>%
+  mutate(state = as.factor(state),
+         siteID = as.factor(siteID),
+         drainage_type = as.factor(drainage_type),
+         project = as.factor(project)) -> mcap
+
+save(mcap, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/cap_manage.Rda")
+  
+
+mcap %>%
+  ggplot(aes(x=drainage_type, y=N_load, fill = project)) +
+  geom_boxplot(na.rm = TRUE) +
+  stat_summary(fun.y = "mean", geom = "point", shape = 3, stroke = 1.5, color = "black", size = 3) +
+  #stat_summary(fun.y = "mean", geom = "text", label = "------", color = "black", size = 15) +
+  #scale_color_brewer(palette = "Set1", direction = -1) +
+  scale_fill_brewer() +
+  scale_x_discrete(name = "Drainage Type", labels = function(x) str_wrap(x, width = 15)) +
+  scale_y_continuous(name = "Nitrate-N Load, kg/ha", labels = comma) +
+  theme_light() +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text  = element_text(size = 12)) +
+  ggtitle("Annual Nitrate-N Loads")
+ggsave(filename = "no3n_mcap_1.png", width = 12, height = 8, dpi = 300)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+mcap %>%
+  group_by(drainage_type, year) %>%
+  mutate(number = n()) %>%
+  mutate(mean = mean(N_load),
+         se = sd(N_load)/sqrt(number)) %>%
+  ggplot(aes(x=year, y=N_load, fill = project)) +
+  geom_bar(stat = "summary", fun.y = "mean", position = "stack") + 
+  geom_errorbar(aes(ymin=mean-se, ymax=mean+se), width = 0.3) +
+  facet_grid(drainage_type ~ .) +
+  scale_x_discrete(name ="") +
+  theme_light() +
+  ggtitle("Annual Nitrate-N Load") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(face = "bold", colour = "grey30", size = 16),
+        axis.text.y = element_text(size = 12, vjust = 0.5),
+        axis.text.x = element_blank(),
+        strip.text = element_text(size = 6, face ="bold")) +
+  scale_fill_brewer() +
+  coord_cartesian(ylim = c(0, 80))
+ggsave(filename = "no3n_mcap_2.png", width = 12, height = 8, dpi = 300)
