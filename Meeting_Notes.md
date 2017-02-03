@@ -1,5 +1,52 @@
 SUSTAINABLE PAPER NOTES
+---
+title: "Writing Meeting"
+date: 1/17/2017
+---
 
+QUESTION: which system of crop production is more sustainable
+          what are the goals for corn porduction systems
+          address rain-fed areas
+ANSWER:   we should be able to say that not all practices are sustainable  
+
+NO3 loss
+  - numeric crateria - load on no3
+  - NO3 reduction based on hypoxia goal 
+  - 45% reduction
+Energy
+  - there is no goal, like there is for NO3 loss
+  - relative numbers can be used by comparing one cropping system with another, but this does not gives you any actionable     measures (what to implement ...)
+  - what can be done to improve energy efficienty 
+  - it should be focused on farmer-level changes 
+  - should be relevant to the CSCAP project research
+  - farmers adoppting corn with longer growing days can imporve harvest of solar energy better?
+  - directional correctness (Rob staple phrase)
+GHG
+  - uncerttinty is huge 
+  - compare GHG emission of different crop rotation 
+Soil Errosion
+  - regeneration of soil ~0.5 tons per acre 
+
+SOC
+- we do not have baseline?
+- how to add more biomass carbon in to the system in order to make sustainable
+- if climate changes 
+- continuous no till can be 
+- biometrition (multi-site, multi-year) Sasha?
+- LOOK at the site-level differences of differences 
+
+
+Drainage Data _________________________________________________________
+- analysis Manage database
+- roations that have conr in that 
+
+
+- look at the CV of 40 to 60 cm of different depths 
+- analyse at 0- 10 and  0-40 cm
+- delta-delta SOC and CS
+
+
+_______________________________________________________________________
 
 12/14/2016    
 Meeting with Rick and Matt
