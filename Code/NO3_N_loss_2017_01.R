@@ -535,12 +535,14 @@ library(dplyr)
 mcap %>% 
   filter(state %in% c("IA", "MO", "MN", "IN", "OH", "IL")) %>%
   filter(drainage_type %in% c("free drainage", "cont. drainage", "Subsurface (no inlets specified)")) %>%
+  filter((project == "CSCAP" & year > 2010) | (project == "MANAGE")) %>%
+  filter((project == "CSCAP" & siteID != "BRADFORD.A") | (project == "MANAGE")) %>%   #remove BRADFORD.A
   group_by(interaction(project,drainage_type)) %>%
   mutate(ecd = ecdf(N_load)(N_load)) %>%
   ungroup() %>%
   ggplot(aes(x = N_load, y = ecd, group = drainage_type, colour = drainage_type)) +
-  geom_smooth(se = FALSE, formula = y ~ ns(x, 15), method = "lm", lwd = 1.5) +
-  #geom_line(lwd = 1.5) +
+  #geom_smooth(se = FALSE, formula = y ~ ns(x, 15), method = "lm", lwd = 1.5) +       #smooth with BRADFORD.A
+  geom_line(lwd = 1.5) +
   theme_light() +
   scale_color_brewer(palette = "Accent", labels = c("Controlled Drainage - CSCAP", 
                                                     "Free Drainage - CSCAP", 
@@ -554,11 +556,11 @@ mcap %>%
         legend.text = element_text(size = 12),
         legend.position = c(0.8, 0.2)) -> smooth_mcap
 smooth_mcap
-ggsave(filename = "no3n_mcap_3_smooth.png", width = 10, height = 7, dpi = 300)
-
+#ggsave(filename = "no3n_mcap_3_smooth.png", width = 10, height = 7, dpi = 300)    #figure with BRADFORD.A
+ggsave(filename = "no3n_mcap_3_wo_BRADFORD.png", width = 10, height = 7, dpi = 300)    #figure w/o BRADFORD.A
 
 vlines <- data.frame(regions = c("Iowa", "Indiana", "Minnesota"),
-                     max_loads = c(10, 15, 25), 
+                     max_loads = c(17, NA, 7), 
                      y_value = rep(0, 3))
 
 smooth_mcap +
@@ -569,6 +571,7 @@ smooth_mcap +
   geom_text(inherit.aes = F, data=vlines, mapping = aes(x=max_loads, y=y_value, label = regions),
             size = 4, fontface = "bold", color = "gray40", angle = 90, hjust = 0, vjust = -0.2)
  
-
+#ggsave(filename = "no3n_mcap_3_smooth_vline.png", width = 10, height = 7, dpi = 300)  #figure with BRADFORD.A
+ggsave(filename = "no3n_mcap_3_wo_BRADFORD_vline.png", width = 10, height = 7, dpi = 300)  #figure w/o BRADFORD.A
 
 
