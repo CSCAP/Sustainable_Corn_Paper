@@ -463,9 +463,7 @@ bind_rows(cscap, manage) %>%
 #save(mcap, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/cap_manage.Rda")
 #load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/cap_manage.Rda")  
 
-mcap %>%
-  filter(state %in% c("IA", "MO", "MN", "IN", "OH", "IL")) %>%
-  filter(drainage_type %in% c("free drainage", "cont. drainage", "Subsurface (no inlets specified)")) %>%
+
   ggplot(aes(x=drainage_type, y=N_load, fill = project)) +
   geom_boxplot(na.rm = TRUE) +
   stat_summary(fun.y = "mean", geom = "point", shape = 3, stroke = 1.5, color = "black", size = 3) +
@@ -554,24 +552,169 @@ mcap %>%
         axis.title = element_text(size = 14),
         axis.text  = element_text(size = 12),
         legend.text = element_text(size = 12),
-        legend.position = c(0.8, 0.2)) -> smooth_mcap
+        legend.position = c(0.75, 0.2)) -> smooth_mcap
 smooth_mcap
 #ggsave(filename = "no3n_mcap_3_smooth.png", width = 10, height = 7, dpi = 300)    #figure with BRADFORD.A
 ggsave(filename = "no3n_mcap_3_wo_BRADFORD.png", width = 10, height = 7, dpi = 300)    #figure w/o BRADFORD.A
 
 vlines <- data.frame(regions = c("Iowa", "Indiana", "Minnesota"),
                      max_loads = c(17, NA, 7), 
-                     y_value = rep(0, 3))
+                     y_value = rep(0.99, 3))
 
 smooth_mcap +
   scale_x_continuous(breaks = sort(c(0, 50, 100, 150, vlines$max_loads))) +
   geom_vline(xintercept = vlines$max_loads, size = 1, colour = "gray40", alpha = 0.5, 
              linetype = "longdash") +
-  theme(panel.grid.minor.x = element_blank()) +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.text = element_text(size = 14, color = "gray40"),
+        legend.key.size = unit(2, 'lines')) +
   geom_text(inherit.aes = F, data=vlines, mapping = aes(x=max_loads, y=y_value, label = regions),
-            size = 4, fontface = "bold", color = "gray40", angle = 90, hjust = 0, vjust = -0.2)
+            size = 4.5, fontface = "bold", color = "gray40", angle = 90, hjust = 1, vjust = -0.4)
  
 #ggsave(filename = "no3n_mcap_3_smooth_vline.png", width = 10, height = 7, dpi = 300)  #figure with BRADFORD.A
 ggsave(filename = "no3n_mcap_3_wo_BRADFORD_vline.png", width = 10, height = 7, dpi = 300)  #figure w/o BRADFORD.A
 
+
+
+
+# NEW GRAPHS ==================================
+
+mcap %>%
+  filter(state %in% c("MN", "IA", "MO", "IL", "IN", "OH")) %>%
+  filter(drainage_type %in% c("free drainage", "cont. drainage", "Subsurface (no inlets specified)")) %>%
+  filter((project == "CSCAP" & year > 2010) | (project == "MANAGE")) %>%
+  filter(siteID != "BRADFORD.A") %>%
+  droplevels() -> manacap
+
+manacap %>%
+  filter(drainage_type != "cont. drainage") %>%
+  group_by(project, siteID, drainage_type, year) %>%
+  summarize(count = n()) %>%
+  group_by(project, siteID, drainage_type) %>%
+  summarize(count = max(count), num_years = n()) %>%
+  arrange(project, siteID, drainage_type) %>%
+  ggplot(aes(x=as.factor(count), fill=project)) +
+  geom_bar() +
+  facet_grid(project ~ .) +
+  scale_y_continuous(breaks = seq(0, 12, 2)) +
+  labs(x = "Number of Plots in the Study",
+       y = "Number of Sites",
+       title = "Summary of Free Drainage Plots per Site",
+       fill = "") +
+  theme_light() +
+  scale_fill_brewer(palette = "Accent") +
+  theme(plot.title = element_text(hjust = 0.5, vjust = 1, size = 20, face = "bold"),
+        axis.title = element_text(size = 16, face = "bold", colour = "grey30"),
+        axis.text  = element_text(size = 14),
+        #strip.text = element_text(size = 12, face = "bold"),
+        strip.text = element_blank(),
+        legend.text = element_text(size = 14))
+ggsave(filename = "no3n_manacap_1.png", width = 10, height = 7, dpi = 300)
+
+
+
+manacap %>% 
+  group_by(state, siteID, drainage_type, year) %>%
+  summarise(N_load = mean(N_load), project = first(project)) %>%
+  arrange(project) -> plot_manacap
+
+
+
+plot_manacap %>%
+  group_by(interaction(project,drainage_type)) %>%
+  mutate(ecd = ecdf(N_load)(N_load)) %>%
+  ungroup() %>%
+  ggplot(aes(x=N_load, 
+             group=interaction(project,drainage_type), 
+             color = interaction(project,drainage_type))) + 
+  stat_ecdf(na.rm = T, lwd = 1.5, geom = "line") +
+  #ggplot(aes(x = N_load, y = ecd, group = drainage_type, colour = drainage_type)) +
+  #geom_line(lwd = 1.5) +
+  theme_light() +
+  scale_color_brewer(palette = "Accent", labels = c("Controlled Drainage - CSCAP", 
+                                                    "Free Drainage - CSCAP", 
+                                                    "Free Drainage - MANAGE")) +
+  xlab("Nitrate-N Load, kg/ha") +
+  ylab("Cummulative Density") +
+  labs(color = "", title = "Nitrate-N Load from Ag Fields in Corn Belt Region") +
+  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        legend.position = c(0.75, 0.2)) -> line_manacap
+line_manacap
+ggsave(filename = "no3n_manacap_2.png", width = 10, height = 7, dpi = 300)    
+
+vlines <- data.frame(regions = c("Iowa", "Indiana", "Minnesota"),
+                     max_loads = c(17, NA, 7), 
+                     y_value = rep(0.99, 3))
+
+line_manacap +
+  scale_x_continuous(breaks = sort(c(0, 50, 100, 150, vlines$max_loads))) +
+  geom_vline(xintercept = vlines$max_loads, size = 1, colour = "gray40", alpha = 0.5, 
+             linetype = "longdash") +
+  theme(panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        legend.text = element_text(size = 14, color = "gray40"),
+        legend.key.size = unit(2, 'lines')) +
+  geom_text(inherit.aes = F, data=vlines, mapping = aes(x=max_loads, y=y_value, label = regions),
+            size = 4.5, fontface = "bold", color = "gray40", angle = 90, hjust = 1, vjust = -0.4)
+
+ggsave(filename = "no3n_manacap_2a.png", width = 10, height = 7, dpi = 300) 
+
+
+
+
+
+plot_manacap %>%
+  ggplot(aes(x=drainage_type, y=N_load, fill = project)) +
+  geom_boxplot(na.rm = T) +
+  stat_summary(fun.y = "mean", geom = "point", size = 3, shape = 3, stroke = 1.5) +
+  theme_light() +
+  labs(title = "Average Annual Nitrate-N Loads",
+       x = "",
+       y = "Nitrate-N Load, kg/ha",
+       fill = "") +
+  scale_x_discrete(labels = function(x) str_wrap(c("Controlled Drainage", 
+                                                   "Free Drainage", 
+                                                   "Free Drainage"), 
+                                                 width = 20)) +
+  scale_fill_brewer(palette = "Accent") +
+  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.text = element_text(size = 12),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) 
+
+ggsave(filename = "no3n_manacap_3.png", width = 10, height = 7, dpi = 300) 
+
+
+
+
+plot_manacap %>%
+  filter(project == "CSCAP") %>%
+  filter(siteID != "GILMORE") %>%
+  ggplot(aes(x=year, y=N_load, group = drainage_type, colour = drainage_type)) +
+  stat_summary(fun.y = "mean", geom = "line", lwd = 1.5) +
+  theme_light() +
+  labs(title = "Chnage in Average Annual Nitrate-N Loads in CSCAP",
+       subtitle = "without GILMORE",
+       x = "",
+       y = "Nitrate-N Load, kg/ha",
+       colour = "Drainage Type") +
+  scale_color_brewer(palette = "Accent", labels = c("Controlled", "Free")) +
+  coord_cartesian(ylim = c(0, 35)) +
+  theme(plot.title = element_text(hjust = 0.5, size = 20, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5, size = 16, face = "bold"),
+        axis.title = element_text(size = 14),
+        axis.text  = element_text(size = 12),
+        legend.title = element_text(size = 12, face = "bold"),
+        legend.text = element_text(size = 12),
+        legend.position = c(0.8, 0.2),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) 
+
+ggsave(filename = "no3n_manacap_4.png", width = 10, height = 7, dpi = 300) 
 
