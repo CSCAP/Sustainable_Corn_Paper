@@ -31,3 +31,10 @@ vignettes/*.pdf
 # Temporary files created by R markdown
 *.utf8.md
 *.knit.md
+
+# Temporary files created by Excel
+~$*.xls*
+
+# Ignore all files with following patterns 
+**/.SERF_Flow_n_NO3
+**/.SERF Drainage Data 07 to 15.xlsx
