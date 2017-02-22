@@ -463,7 +463,7 @@ bind_rows(cscap, manage) %>%
 #save(mcap, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/cap_manage.Rda")
 #load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/cap_manage.Rda")  
 
-
+mcap %>%
   ggplot(aes(x=drainage_type, y=N_load, fill = project)) +
   geom_boxplot(na.rm = TRUE) +
   stat_summary(fun.y = "mean", geom = "point", shape = 3, stroke = 1.5, color = "black", size = 3) +
@@ -717,4 +717,215 @@ plot_manacap %>%
         panel.grid.minor = element_blank()) 
 
 ggsave(filename = "no3n_manacap_4.png", width = 10, height = 7, dpi = 300) 
+
+
+
+# MAP the LOAD
+library(ggmap)
+mapme <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", 
+                    col_types = c("text", "text", "text", "text", 
+                                  "numeric", "numeric", "numeric", "numeric", 
+                                  "text"))
+mapme %>% 
+  filter(Project == "CSCAP") %>%
+  filter(YEAR > 2010) %>%
+  group_by(STATE, Latitude, Longitude, SITE, Treatment) %>%
+  summarize(Load = mean(`NO3-N Loss (kg/ha)`, na.rm = T)) %>% 
+  filter(grepl("free", ignore.case = T, Treatment)) %>%
+  select(Latitude, Longitude, Load) %>%
+  mutate(Load = round(Load)) -> mapCAP
+
+#mapCAP <- mapCAP[as.numeric(rep(row.names(mapCAP), mapCAP$Load)), ]
+
+all_states = map_data("state")
+
+ggplot() +
+  geom_polygon(data = all_states, aes(x = long, y = lat, group = group),
+               colour = "white", fill = "gray80") +
+  stat_density2d(data = mapCAP, aes(x = Longitude, y = Latitude, fill=..level.., alpha=..level..),
+                 size=2, bins=7, , geom='polygon') +
+  #scale_fill_gradient(low = "green", high = "red") +
+  geom_point(data = mapCAP, aes(x = Longitude, y = Latitude), colour = "orange", size = 3, alpha = 0.8) +
+  theme_bw() +
+  scale_alpha_continuous(range=c(0.1,0.5), guide = FALSE) +
+  coord_map()
+
+ggplot() +
+  geom_polygon(data = all_states, aes(x = long, y = lat, group = group),
+               colour = "white", fill = "gray80") +
+  geom_tile(data = mapCAP, aes(x = Longitude, y = Latitude, fill = Load)) +
+  scale_fill_gradient(low = "yellow", high = "red") +
+  coord_map()
+
+
+library(akima)
+load <- with(mapCAP, interp(x = Longitude, y = Latitude, z = Load))
+filled.contour(x = load$x,
+               y = load$y,
+               z = load$z,
+               color.palette =
+                 colorRampPalette(c("white", "blue")),
+               xlab = "Longitude",
+               ylab = "Latitude",
+               main = "NO3-N Load from Free Drainage Tile Flow",
+               key.title = title(main = "NO3-N Load (kg/ha)", cex.main = 1))
+
+library(ggplot2)
+library(reshape2)
+library(ggmap)
+
+df <- melt(load$z, na.rm = TRUE)
+names(df) <- c("x", "y", "Load")
+df$Lon <- load$x[df$x]
+df$Lat <- load$y[df$y]
+df <- df[!is.na(df$Load), ]
+
+cornbelt <- get_map(location = c(lon = -89, lat = 41.5),
+                    zoom = 6,
+                    maptype = "toner",
+                    source = "stamen")
+g1 <- ggmap(cornbelt)
+g1
+
+g1 + 
+  geom_tile(data = df, aes(x = Lon, y = Lat, fill = Load), na.rm = T, alpha = 0.7) +
+  #stat_contour(data = df, aes(x = Lon, y = Lat, z = Load), colour = "black") +
+  ggtitle("NO3-N Load from Free Drainage Tile Flow") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme_bw() +
+  scale_fill_continuous(name = "NO3-N Load (kg/ha)",
+                        low = "white", high = "darkblue",
+                        na.value = "transparent") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 25, face = "bold"),
+        legend.title = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 20, vjust = -0.5),
+        axis.title.y = element_text(size = 20, vjust = 0.2),
+        legend.text = element_text(size = 10)) +
+  geom_point(data = mapCAP, aes(x = Longitude, y = Latitude), colour = "red", size = 3) +
+  coord_map()
+
+#
+mapme <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", 
+                    col_types = c("text", "text", "text", "text", 
+                                  "numeric", "numeric", "numeric", "numeric", 
+                                  "text"))
+mapme %>% 
+  filter(ifelse(Project == "CSCAP", grepl("free", ignore.case = T, Treatment), 
+                grepl("Subs", ignore.case = T, Treatment))) %>%
+  group_by(STATE, Latitude, Longitude, SITE) %>%
+  summarize(Load = mean(`NO3-N Loss (kg/ha)`, na.rm = T)) %>%
+  ungroup() %>%
+  select(Latitude, Longitude, Load) %>%
+  mutate(Load = round(Load, 1)) %>%
+  filter(Longitude < -40) -> mapCAP
+
+# mapCAP <- mapCAP[as.numeric(rep(row.names(mapCAP), mapCAP$Load)), ]
+# 
+# all_states = map_data("state")
+# 
+# ggplot() +
+#   geom_polygon(data = all_states, aes(x = long, y = lat, group = group),
+#                colour = "white", fill = "gray80") +
+#   stat_density2d(data = mapCAP, aes(x = Longitude, y = Latitude, fill=..level.., alpha=..level..),
+#                  size=2, bins=7, , geom='polygon') +
+#   #scale_fill_gradient(low = "green", high = "red") +
+#   geom_point(data = mapCAP, aes(x = Longitude, y = Latitude), colour = "orange", size = 3, alpha = 0.8) +
+#   theme_bw() +
+#   scale_alpha_continuous(range=c(0.1,0.5), guide = FALSE) +
+#   coord_map(xlim = c(-100, -80), ylim = c(35, 50))
+
+
+library(akima)
+load <- with(mapCAP, interp(x = Longitude, y = Latitude, z = Load, duplicate = "mean"))
+filled.contour(x = load$x,
+               y = load$y,
+               z = load$z,
+               color.palette =
+                 colorRampPalette(c("white", "blue")),
+               xlab = "Longitude",
+               ylab = "Latitude",
+               main = "NO3-N Load from Free Drainage Tile Flow",
+               key.title = title(main = "NO3-N Load (kg/ha)", cex.main = 1))
+
+library(ggplot2)
+library(reshape2)
+library(ggmap)
+
+df <- melt(load$z, na.rm = TRUE)
+names(df) <- c("x", "y", "Load")
+df$Lon <- load$x[df$x]
+df$Lat <- load$y[df$y]
+df <- df[!is.na(df$Load), ]
+
+cornbelt <- get_map(location = c(lon = -89, lat = 41.5),
+                    zoom = 6,
+                    maptype = "toner",
+                    source = "stamen")
+g1 <- ggmap(cornbelt)
+g1
+
+g1 + 
+  geom_tile(data = df, aes(x = Lon, y = Lat, fill = Load), na.rm = T, alpha = 0.7) +
+  stat_contour(data = df, aes(x = Lon, y = Lat, z = Load), colour = "black") +
+  ggtitle("NO3-N Load from Free Drainage Tile Flow") +
+  xlab("Longitude") +
+  ylab("Latitude") +
+  theme_bw() +
+  scale_fill_continuous(name = "NO3-N Load (kg/ha)",
+                        low = "white", high = "darkblue",
+                        na.value = "transparent") +
+  theme_bw() +
+  theme(plot.title = element_text(size = 25, face = "bold"),
+        legend.title = element_text(size = 15),
+        axis.text = element_text(size = 15),
+        axis.title.x = element_text(size = 20, vjust = -0.5),
+        axis.title.y = element_text(size = 20, vjust = 0.2),
+        legend.text = element_text(size = 10)) +
+  geom_point(data = mapCAP, aes(x = Longitude, y = Latitude), colour = "red", size = 3) +
+  coord_map()
+#
+
+
+
+
+
+
+
+
+
+
+
+
+# MANUAL INTERPOLATION ===================================================
+# source; https://www.r-bloggers.com/using-2d-contour-plots-within-ggplot2-to-visualize-relationships-between-three-variables/
+
+mtcars$quart <- cut(mtcars$qsec, quantile(mtcars$qsec))
+ggplot(mtcars, aes(x = wt, y = hp, color = factor(quart))) +
+  geom_point(shape = 16, size = 5) +
+  theme(legend.position = c(0.80, 0.85),
+        legend.background = element_rect(colour = "black"), 
+        panel.background = element_rect(fill = "black")) +
+  labs(x = "Weight (1,000lbs)",  y = "Horsepower") +
+  scale_colour_manual(values = c("#fdcc8a", "#fc8d59", "#e34a33", "#b30000"),
+                                  name = "Quartiles of qsec",
+                                  labels = c("14.5-16.9s", "17.0-17.7s", "17.8-18.9s", "19.0-22.9s"))
+
+data.loess <- loess(qsec ~ wt * hp, data = mtcars)
+xgrid <-  seq(min(mtcars$wt), max(mtcars$wt), 0.3)
+ygrid <-  seq(min(mtcars$hp), max(mtcars$hp), 0.3)
+data.fit <-  expand.grid(wt = xgrid, hp = ygrid)
+mtrx3d <-  predict(data.loess, newdata = data.fit)
+contour(x = xgrid, y = ygrid, z = mtrx3d, xlab = "Weight (1,000lbs)", ylab = "Horsepower")
+
+library(reshape)
+# Transform data to long form
+mtrx.melt <- melt(mtrx3d, id.vars = c("wt", "hp"), measure.vars = "qsec")
+names(mtrx.melt) <- c("wt", "hp", "qsec")
+# Return data to numeric form
+mtrx.melt$wt <- as.numeric(str_sub(mtrx.melt$wt, str_locate(mtrx.melt$wt, "=")[1,1] + 1))
+mtrx.melt$hp <- as.numeric(str_sub(mtrx.melt$hp, str_locate(mtrx.melt$hp, "=")[1,1] + 1))
+
 
