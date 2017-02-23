@@ -221,7 +221,17 @@ SOIL PAPER
     
     
 
+------------------
+Matt-Katie-Me meeting about POSTER
 
+- Jan-March, Apr-June, July-Sept, Oct-Dec
+- sites with both Control and Free drainage
+- average rap (site-treatment combination)
+- FLow and Loads, flow-waited NO3 conc
+- Managemnet table: 
+    - crop rotation
+    - fertilizer application 
+    - board hights (average dates) - snapshot 
 
 
 
