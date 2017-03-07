@@ -39,7 +39,7 @@ ggsave(filename = "BRADFORD.C.png", width = 12, height = 8, dpi = 300)
 
 
 # Coefficient of Variance of CS by depth
-CS2 %>%
+CS2 %>% 
   group_by(site, layer) %>%
   summarize(ave = mean(CS), dev = sd(CS)) %>%
   mutate(CV = dev/ave) %>%
@@ -51,14 +51,37 @@ CS2 %>%
 
 
 
-# CS delta of deltas
+ # CS delta of deltas
 CS %>%
   select(-c(Latitude, Longitude, County, `Ave Plot Size (ha)`)) %>%
   mutate(till = ifelse(tillage == "TIL2", "CT", "NT")) %>%
   group_by(site, year, crot_name, till) %>%
   summarise(ave_CS = mean(CS)) %>%
   filter(!is.na(till)) %>%
-  spread(key=till, value = ave_CS) %>%
+  spread(key=till, value = ave_CS) %>%                   #see this table
+  filter(!is.na(CT), !is.na(NT)) %>%
+  mutate(delta = NT - CT) %>%
+  group_by(site) %>%
+  mutate(fly = ifelse(year > mean(year), "last", "first")) %>%
+  mutate(cover = ifelse(grepl("cover", crot_name), "cover", "no cover")) %>%
+  select(-c(year, CT, NT)) %>%
+  spread(key=fly, value = delta) %>%
+  mutate(delta_delta = last - first) %>%
+  ggplot(aes(x=cover, y = delta_delta)) + 
+  geom_boxplot(outlier.shape = NA) +
+  geom_jitter(width = 0.2) #+
+#  geom_text(aes(label = paste(site, crot_name, sep = " ")))
+
+
+
+CS2 %>%
+  filter(layer == "bottom") %>%
+  select(-c(Latitude, Longitude, County, `Ave Plot Size (ha)`)) %>%
+  mutate(till = ifelse(tillage == "TIL2", "CT", "NT")) %>%
+  group_by(site, year, crot_name, till) %>%
+  summarise(ave_CS = mean(CS)) %>%
+  filter(!is.na(till)) %>%
+  spread(key=till, value = ave_CS) %>%                   #see this table
   filter(!is.na(CT), !is.na(NT)) %>%
   mutate(delta = NT - CT) %>%
   group_by(site) %>%
@@ -70,8 +93,27 @@ CS %>%
   ggplot(aes(x=cover, y = delta_delta)) + 
   geom_boxplot()
 
+
+
 ggplot(aes(x=cover, y=delta)) + geom_boxplot(outlier.alpha = 0) + geom_jitter(width=0.1, size=2)
 
 ggplot(aes(x=crot_name, y= delta, color = year)) + 
   geom_boxplot(outlier.shape = NA, size = 1) + 
   geom_jitter(width = 0.1, size = 2)
+
+
+
+var_names %>% filter(grepl("biomass", short_description)) %>% filter(grepl("carbon", short_description))
+
+head(agro)
+agro %>%
+  filter(varname == "AGR1") %>%
+  filter(!is.na(value)) %>%
+  group_by(site, year) %>%
+  summarize(ave = mean(value)) %>%
+  ggplot(aes(x=site, y=ave)) +
+  geom_boxplot() +
+  scale_y_continuous(labels = comma) +
+  theme(axis.text.x = element_text(angle = 90))
+  head()
+
