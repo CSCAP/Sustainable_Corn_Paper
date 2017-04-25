@@ -64,7 +64,7 @@ cs %>%
   ggplot(aes(x = CS_diff, group = tillage, colour = tillage)) +
   stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
   theme_light() +
-  geom_vline(xintercept = 0)
+  geom_vline(xintercept = 0, size = 1)
 
 
 # cs %>%
@@ -123,7 +123,7 @@ cs %>%
   ggplot(aes(x = CS_diff_yearly, group = drainage, colour = drainage)) +
   stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
   theme_light() +
-  geom_vline(xintercept = 0)
+  geom_vline(xintercept = 0, size = 1)
 
 
 
@@ -171,5 +171,57 @@ cs %>%
   ggplot(aes(x = CS_diff_yearly, group = crot, colour = crot)) +
   stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
   theme_light() +
-  geom_vline(xintercept = 0)
+  geom_vline(xintercept = 0, size = 1)
+
+
+
+
+
+# EXTENDED ROTATION effect on CS change ---------------
+# CS20 %>%
+#   select(-c(Latitude, Longitude, County, `Ave Plot Size (ha)`, rotation, layer)) %>%
+#   mutate(rotation = ifelse(crot %in% c("CR01", "CR03"), "CC", 
+#                            ifelse(crot == "CR07", "CSW", "CS"))) -> cs
+
+CS40 %>%
+  mutate(rotation = ifelse(crot %in% c("CR01", "CR03"), "CC", 
+                           ifelse(crot == "CR07", "CSW", "CS"))) %>%
+  select(site, plotid, year, rotation, CS, crot, crot_name, tillage, drainage, nitrogen, State, fly) -> cs
+
+CS60 %>%
+  mutate(rotation = ifelse(crot %in% c("CR01", "CR03"), "CC", 
+                           ifelse(crot == "CR07", "CSW", "CS"))) %>%
+  select(site, plotid, year, rotation, CS, crot, crot_name, tillage, drainage, nitrogen, State, fly) -> cs
+
+
+cs %>%
+  select(site, rotation, CS) %>%
+  group_by(site, rotation) %>%
+  summarise(CS = mean(CS)) %>%
+  group_by(site) %>%
+  summarise(n=n()) %>%
+  filter(n > 2) %>%     # how do we filter: 2 or 1?
+  select(site) %>%
+  collect(site) -> my_sites
+
+
+cs %>%
+  filter(site %in% my_sites$site) %>%   # paired sites only
+  group_by(site, plotid) %>%
+  mutate(fly = ifelse(year == max(year), "last", "first"),
+         year_diff = max(year)-min(year)) %>%
+  ungroup() %>%
+  select(-c(year)) %>%
+  spread(fly, CS) %>%
+  mutate(CS_diff = last - first,
+         CS_diff_yearly = CS_diff/year_diff) %>%
+  group_by(crot) %>%
+  mutate(ecd = ecdf(CS_diff)(CS_diff),
+         ecd_yearly = ecdf(CS_diff_yearly)(CS_diff_yearly)) %>%
+  ungroup() %>%
+  ggplot(aes(x = CS_diff_yearly, group = rotation, colour = rotation)) +
+  stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
+  theme_light() +
+  geom_vline(xintercept = 0, size = 1)
+
 
