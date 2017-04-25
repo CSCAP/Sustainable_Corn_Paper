@@ -200,8 +200,11 @@ library(readxl)
 
 setwd("~/GitHub/CSCAP/Sustainable_Corn_Paper/Figs/Water_Figs")
 
-NO3_N_Loss <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", sheet = "Sheet1", 
-                         col_types = c("text", "text", "text", "text", "numeric", "numeric"))
+read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", sheet = "CSCAP", 
+           col_types = c("text", "text", "text", "text", 
+                         "numeric", "numeric",  "numeric", "numeric", "text")) %>%
+  select(STATE:`NO3-N Loss (kg/ha)`) %>%
+  filter(Treatment %in% c("free drainage", "cont. drainage")) -> NO3_N_Loss
 
 
 NO3_N_Loss %>%

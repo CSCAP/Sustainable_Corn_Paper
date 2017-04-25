@@ -784,6 +784,7 @@ CS_summary[is.na(CS_summary)] <- "-"
 CS_summary
 
 CS -> CS60
+save(CS60, file = "C:/Users/Gio/Documents/GitHub/CSCAP/Sustainable_Corn_Paper/Data/CS60.RData")
 
 CS2 %>%
   filter(layer != "bottom") %>%
@@ -810,6 +811,7 @@ save(CS40, file = "C:/Users/Gio/Documents/GitHub/CSCAP/Sustainable_Corn_Paper/Da
 CS2 %>%
   filter(layer == "top") %>%
   ungroup() -> CS20
+save(CS20, file = "C:/Users/Gio/Documents/GitHub/CSCAP/Sustainable_Corn_Paper/Data/CS20.RData")
 
 CS2 %>%
   filter(layer != "bottom") %>%
