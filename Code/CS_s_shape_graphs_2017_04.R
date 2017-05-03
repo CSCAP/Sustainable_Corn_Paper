@@ -20,10 +20,10 @@ CS40 %>%
   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
   filter(!is.na(tillage)) -> cs
 
-CS60 %>%
-  select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
-  filter(!is.na(tillage)) %>%
-  mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) -> cs
+# CS60 %>%
+#   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
+#   filter(!is.na(tillage)) %>%
+#   mutate(tillage = ifelse(tillage == "TIL2", "CT", "NT")) -> cs
 
 
 cs %>%
@@ -98,9 +98,9 @@ CS40 %>%
   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
   filter(drainage %in% c("DWM2", "DWM3")) -> cs
 
-CS60 %>%
-  select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
-  filter(drainage %in% c("DWM2", "DWM3")) -> cs
+# CS60 %>%
+#   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
+#   filter(drainage %in% c("DWM2", "DWM3")) -> cs
 
 
 
@@ -138,9 +138,9 @@ CS40 %>%
   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
   mutate(crot = ifelse(str_detect(crot_name, "cover"), "COVER", "NO COVER")) -> cs
 
-CS60 %>%
-  select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
-  mutate(crot = ifelse(str_detect(crot_name, "cover"), "COVER", "NO COVER")) -> cs
+# CS60 %>%
+#   select(site, plotid, year, CS, crot, crot_name, tillage, drainage, nitrogen, State) %>%
+#   mutate(crot = ifelse(str_detect(crot_name, "cover"), "COVER", "NO COVER")) -> cs
 
 
 cs %>%
@@ -188,24 +188,26 @@ CS40 %>%
                            ifelse(crot == "CR07", "CSW", "CS"))) %>%
   select(site, plotid, year, rotation, CS, crot, crot_name, tillage, drainage, nitrogen, State, fly) -> cs
 
-CS60 %>%
-  mutate(rotation = ifelse(crot %in% c("CR01", "CR03"), "CC", 
-                           ifelse(crot == "CR07", "CSW", "CS"))) %>%
-  select(site, plotid, year, rotation, CS, crot, crot_name, tillage, drainage, nitrogen, State, fly) -> cs
+# CS60 %>%
+#   mutate(rotation = ifelse(crot %in% c("CR01", "CR03"), "CC", 
+#                            ifelse(crot == "CR07", "CSW", "CS"))) %>%
+#   select(site, plotid, year, rotation, CS, crot, crot_name, tillage, drainage, nitrogen, State, fly) -> cs
 
 
 cs %>%
+  filter(rotation != "CC") %>%
   select(site, rotation, CS) %>%
   group_by(site, rotation) %>%
   summarise(CS = mean(CS)) %>%
   group_by(site) %>%
   summarise(n=n()) %>%
-  filter(n > 2) %>%     # how do we filter: 2 or 1?
+  filter(n > 1) %>%     # how do we filter: 2 or 1?
   select(site) %>%
   collect(site) -> my_sites
 
 
 cs %>%
+  #filter(rotation != "CC") %>%
   filter(site %in% my_sites$site) %>%   # paired sites only
   group_by(site, plotid) %>%
   mutate(fly = ifelse(year == max(year), "last", "first"),
@@ -225,3 +227,47 @@ cs %>%
   geom_vline(xintercept = 0, size = 1)
 
 
+
+
+# SASHA's Data ===============
+library(readxl)
+adjustedSOC <- read_excel("C:/Users/Gio/Downloads/adjustedSOC-try.xlsx")
+
+
+adjustedSOC %>%
+  filter(!is.na(cover)) %>%
+  select(uniqueid, plotid, year, cover, sampling_time, `Old SOC`) %>%
+  rename(SOC = `Old SOC`) %>%
+  mutate(SOC =  as.numeric(SOC)) %>%
+  arrange(uniqueid, plotid, year) %>%
+  group_by(uniqueid, plotid) %>%
+  mutate(fly = ifelse(year == max(year), "last", ifelse(year == min(year), "first", "other"))) %>%
+  filter(fly != "other") %>%
+  mutate(year_diff = max(year)-min(year)) %>%
+  ungroup() %>%
+  select(-c(year)) %>% 
+  spread(fly, SOC) %>%
+  mutate(SOC_diff = last - first,
+         SOC_diff_yearly = SOC_diff/year_diff) %>%
+  group_by(cover) %>%
+  mutate(ecd = ecdf(SOC_diff)(SOC_diff),
+         ecd_yearly = ecdf(SOC_diff_yearly)(SOC_diff_yearly)) %>%
+  ungroup() %>% 
+  # ggplot(aes(x = SOC_diff_yearly, group = cover, colour = cover)) +
+  # stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
+  # theme_light() +
+  # geom_vline(xintercept = 0, size = 1)
+  ggplot(aes(x = SOC_diff_yearly, colour = cover)) +
+  stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
+  scale_color_manual(labels = c("No Rye", "Rye"), values = c("orange", "olivedrab3")) +
+  labs(title = "Old SOC\n", 
+       x = "Annual Change in SOC", 
+       y = "Cummulative Density", 
+       color = "COVER\n") +
+  theme_light() +
+  geom_vline(xintercept = 0, size = 1) +
+  theme(plot.title = element_text(size = 20, hjust = 0.5),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 14),
+        legend.text = element_text(size = 14),
+        legend.title = element_text(size = 14, face = "bold"))
