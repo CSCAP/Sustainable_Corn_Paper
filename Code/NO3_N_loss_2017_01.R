@@ -723,7 +723,7 @@ ggsave(filename = "no3n_manacap_4.png", width = 10, height = 7, dpi = 300)
 
 
 
-# MAP the LOAD
+# MAP the LOAD ==================================================================
 library(ggmap)
 mapme <- read_excel("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/flow/NO3-N Loss.xlsx", 
                     col_types = c("text", "text", "text", "text", 

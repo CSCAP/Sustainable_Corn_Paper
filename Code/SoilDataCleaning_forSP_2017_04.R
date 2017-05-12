@@ -70,9 +70,6 @@ bind_rows(soil, tempo[ , names(soil)]) %>%
   arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 
-# replace SOC value of 8.6 with 0.86 in FREEMAN in 2011                         <<<<<<<<<<<<< REMOVE WHEN DATA UPDATED
-soil$value[which(soil$site == "FREEMAN" & soil$value > 8)] <- 0.86
-
 
 
 # CLEANING of the DATES  ================================================
@@ -191,7 +188,7 @@ soil_SOC %>%
 
 
 # Select Plots and Average over Reps and Crop Rotations  ------------------------------------
-load("~/plots_complete.RData")
+load("~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/plots_complete.RData")
 plot_mng %>%
   select(uniqueid, plotid, rotation, rep, tillage, drainage, nitrogen) %>%
   arrange(uniqueid, plotid, rotation, rep) -> plot_mng
@@ -209,6 +206,15 @@ plot_mng %>%
 soil_SOC  %>%
   left_join(plots, by = c("site", "plotid")) %>%
   filter(!is.na(croprot)) -> soil_SOC
+
+# Fix deviations in field management
+soil_SOC %>%
+  mutate(cover = ifelse(rotation %in% paste0("ROT", c(15, 16, 17, 36, 37, 38, 55)), "Rye", "No Rye")) %>%
+  mutate(tillage = ifelse(site == "SEPAC" & year == 2011, "TIL2", tillage),
+         tillage = ifelse(site == "SEPAC" & year > 2011, "TIL1", tillage),
+         tillage = ifelse(site == "STJOHNS" & year == 2011, "TIL1", tillage)) %>%
+  select(-nitrogen) -> soil_SOC
+
 
 # C STOCK =================================================================================
 # calculate net Carbon Stoack in the top (0-20cm), middle (20-40cm) and bottom (40-60cm) layers
@@ -229,6 +235,9 @@ soil_SOC %>%
   arrange(site, croprot, layer) -> CS_croprot
 
 
-save(CS_croprot, file = "~/CS_croprot.R")
-save(soil_SOC, file = "~/soil_SOC.R")
+save(CS_croprot, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/CS_croprot.R")
+save(soil_SOC, file = "~/GitHub/CSCAP/Sustainable_Corn_Paper/Data/soil_SOC.R")
+
+
+
 

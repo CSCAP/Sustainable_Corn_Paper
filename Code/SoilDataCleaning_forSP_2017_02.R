@@ -72,8 +72,6 @@ bind_rows(soil, tempo[ , names(soil)]) %>%
   arrange(site, plotid, varname, year, depth, subsample) -> soil
 
 
-# replace SOC value of 8.6 with 0.86 in FREEMAN in 2011                         <<<<<<<<<<<<< REMOVE WHEN DATA UPDATED
-soil$value[which(soil$site == "FREEMAN" & soil$value > 8)] <- 0.86
 
 
 

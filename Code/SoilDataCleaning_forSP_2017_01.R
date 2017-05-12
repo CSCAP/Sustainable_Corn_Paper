@@ -83,8 +83,6 @@ soil[-which(soil$site == "ARL" & soil$year == "2015"), ] -> soil
 # remove 2011 TN data in BRADFORD.C 
 soil[-which(soil$site == "BRADFORD.C" & soil$varname == "SOIL14" & soil$year == "2011"), ] -> soil
 
-# replace SOC value of 8.6 with 0.86 in FREEMAN in 2011                         <<<<<<<<<<<<< REMOVE WHEN DATA UPDATED
-soil$value[which(soil$site == "FREEMAN" & soil$value > 8)] <- 0.86
 
 # remove 2015 TN in FREEMAN
 soil[-which(soil$site == "FREEMAN" & soil$varname == "SOIL14" & soil$year == "2015"), ] -> soil
@@ -101,8 +99,6 @@ soil$value[which(soil$site == "KELLOGG" & soil$varname == "SOIL14" & soil$year =
 soil$value[which(soil$site == "MASON" & soil$varname == "SOIL14" & soil$year == "2011" & 
                    soil$depth %in% c("0 to 10", "10 to 20"))] <- NA
 
-# replace BD value of 2.74 with 1.74 in NAEW.WS118 in 2015                         <<<<<<<<<<<<< REMOVE WHEN DATA UPDATED
-soil$value[which(soil$site == "NAEW.WS118" & soil$value > 2)] <- 1.74
 
 # remove 2011 SOC at 40-60 cm in STJOHNS
 soil$value[which(soil$site == "STJOHNS" & soil$varname == "SOIL13" & soil$year == "2011" & 
