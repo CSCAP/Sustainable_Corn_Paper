@@ -54,6 +54,22 @@ manage_drainage %>%
          LOAD = N_load) %>%
   select(STATE:LOAD) -> manage_load
 
+manage_load %>% 
+  group_by(STATE) %>%
+  summarise(`Site_Years` = n(),
+            `Percent` = paste(round(`Site_Years`/dim(.)[1]*100, digits = 1), '%')) %>%
+  ggplot(aes(x= STATE, y=Site_Years)) +
+  #ggplot(aes(x= reorder(STATE, -Site_Years), y=Site_Years)) +
+  geom_bar(stat = "identity", fill = "#1f78b4") +
+  geom_text(aes(label = Percent), vjust = -0.5, size = 6) +
+  theme_light() +
+  scale_y_continuous("Site Years", limits = c(0, 450)) +
+  theme(axis.text = element_text(size = 16),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size = 18),
+        panel.grid = element_blank())
+  
+
 
 
 # CSCAP Data =============================================================================
