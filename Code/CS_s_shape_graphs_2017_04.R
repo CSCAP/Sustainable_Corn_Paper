@@ -123,6 +123,7 @@ cs %>%
   ggplot(aes(x = CS_diff_yearly, group = drainage, colour = drainage)) +
   stat_ecdf(na.rm = TRUE, lwd = 1.5, geom = "line") +
   theme_light() +
+  scale_color_brewer(labels = c("free", "controlled"), palette = "Dark2") +
   geom_vline(xintercept = 0, size = 1)
 
 
