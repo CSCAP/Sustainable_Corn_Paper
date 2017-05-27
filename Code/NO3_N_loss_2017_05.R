@@ -569,7 +569,9 @@ nload %>%
   summarise(LOAD = mean(LOAD, na.rm = TRUE)) %>%
   # ggplot(aes(x=YEAR, y=LOAD, group=interaction(YEAR, Project), fill=Project)) +
   # geom_boxplot() +
-  ggplot(aes(x=YEAR, y=LOAD, group=YEAR, fill = "#1f78b4")) +
+  ggplot(aes(x=YEAR, y=LOAD,
+             #fill = "#1f78b4", 
+             group=YEAR)) +
   geom_boxplot(show.legend = FALSE) +
   geom_hline(yintercept = vlines_2$max_loads,
              size = 1, colour = "darkred", alpha = 0.85, linetype = "dashed") +
@@ -608,13 +610,13 @@ nload %>%
   ungroup() %>% 
   mutate(YEAR = factor(YEAR, ordered = is.ordered(YEAR))) %>%
   ggplot(aes(x=LOAD, y=CF, colour=DRAINAGE)) +
-  geom_point(aes(shape = YEAR), size = 4) +
+  geom_point(aes(shape = YEAR), size = 4, stroke = 1.2) +
   geom_line(size = 1.5) +
   scale_color_manual("Drainage", 
                      values = c("#ACCD42", "#1f78b4", "#ffd19d", "#d95f02","#4D4325"),
                      labels = c("Controlled", "Free")) +
   scale_shape_manual("Year", 
-                     values = c(15, 0, 19, 1, 17)) +
+                     values = c(15, 9, 19, 6, 17)) +
   scale_x_continuous(breaks =sort(c(seq(0, 100, 25), vlines_2$max_loads))) +
   scale_y_continuous(labels = percent) +
   labs(x = "Nitrate-N Load (kg/ha)",
